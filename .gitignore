@@ -1,0 +1,55 @@
+# ==========================================
+# Git Ignore - Comprehensive Security & Cleanliness
+# ==========================================
+
+# Dependencies
+node_modules/
+*/node_modules/
+.pnp
+.pnp.js
+
+# Environment variables & secrets (CRITICAL - NEVER COMMIT)
+.env
+.env.*
+!.env.example
+*.env
+server/.env
+server/.env.*
+!server/.env.example
+client/.env
+client/.env.*
+!client/.env.example
+
+# Build outputs & caches
+dist/
+*/dist/
+build/
+*/build/
+*.tsbuildinfo
+.vite/
+*/vite.config.js.timestamp-*
+vite.config.js.timestamp-*
+
+# Logs & debugging
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Databases & local storage dumps
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+
+# Editor & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temp & Cache
+tmp/
+temp/
+.cache/
