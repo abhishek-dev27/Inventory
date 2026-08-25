@@ -24,12 +24,15 @@ const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
 const app = express();
 
+// Trust proxy for Nginx / reverse proxy setup on GCP VM
+app.set('trust proxy', 1);
+
 // 1. Security HTTP Headers
 app.use(helmet());
 
 // 2. Cross-Origin Resource Sharing with Credentials
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: true,
   credentials: true,
 }));
 
@@ -43,12 +46,13 @@ app.use(cookieParser());
 // 5. HTTP Parameter Pollution (HPP) Protection
 app.use(hpp());
 
-// 6. Global API Rate Limiter (300 requests per 15 mins)
+// 6. Global API Rate Limiter (500 requests per 15 mins)
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: 500,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   message: {
     success: false,
     message: 'Too many requests from this IP. Please try again after 15 minutes.',
@@ -56,12 +60,13 @@ const apiLimiter = rateLimit({
 });
 app.use('/api/', apiLimiter);
 
-// 7. Strict Auth Rate Limiter (15 login attempts per 15 mins)
+// 7. Strict Auth Rate Limiter (30 login attempts per 15 mins)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 15,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   message: {
     success: false,
     message: 'Too many authentication attempts from this IP. Please try again after 15 minutes.',
