@@ -123,9 +123,9 @@ const getDashboardStats = async (req, res, next) => {
     const txWhere = { createdAt: { [Op.between]: [start, end] } };
     if (isStaffRestricted) {
       txWhere[Op.or] = [
-        { destination: { [Op.like]: `%${user.assignedLocation}%` } },
-        { location: { [Op.like]: `%${user.assignedLocation}%` } },
-        { recipient: { [Op.like]: `%${user.assignedLocation}%` } },
+        { place: { [Op.like]: `%${user.assignedLocation}%` } },
+        { senderAddress: { [Op.like]: `%${user.assignedLocation}%` } },
+        { notes: { [Op.like]: `%${user.assignedLocation}%` } },
       ];
     }
 
@@ -145,9 +145,9 @@ const getDashboardStats = async (req, res, next) => {
     const recentWhere = {};
     if (isStaffRestricted) {
       recentWhere[Op.or] = [
-        { destination: { [Op.like]: `%${user.assignedLocation}%` } },
-        { location: { [Op.like]: `%${user.assignedLocation}%` } },
-        { recipient: { [Op.like]: `%${user.assignedLocation}%` } },
+        { place: { [Op.like]: `%${user.assignedLocation}%` } },
+        { senderAddress: { [Op.like]: `%${user.assignedLocation}%` } },
+        { notes: { [Op.like]: `%${user.assignedLocation}%` } },
       ];
     }
 

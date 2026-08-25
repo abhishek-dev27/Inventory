@@ -121,13 +121,19 @@ const getProductById = async (req, res, next) => {
 // @access  Private
 const getLowStockProducts = async (req, res, next) => {
   try {
-    const products = await Product.findAll({
-      where: {
-        quantity: {
-          [Op.lte]: Product.sequelize.col('lowStockThreshold'),
-        },
+    const user = req.user;
+    const isStaffRestricted = user && user.role !== 'admin' && user.assignedLocation && user.assignedLocation !== 'All Locations';
+    const where = {
+      quantity: {
+        [Op.lte]: Product.sequelize.col('lowStockThreshold'),
       },
-      include: [{ model: User, as: 'creator', attributes: ['id', 'name'] }],
+    };
+    if (isStaffRestricted) {
+      where.location = { [Op.like]: `%${user.assignedLocation}%` };
+    }
+
+    const products = await Product.findAll({
+      where,
       order: [['quantity', 'ASC']],
     });
 
