@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import Input from '../common/Input';
 import Button from '../common/Button';
+import GodownModal from '../godowns/GodownModal';
 import { ROLES, GODOWN_LOCATIONS, ALL_LOCATIONS_OPTION } from '../../utils/constants';
+import { FiPlus } from 'react-icons/fi';
 
-const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false }) => {
+const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false, godowns = [] }) => {
+  const [godownList, setGodownList] = useState(godowns && godowns.length > 0 ? godowns : GODOWN_LOCATIONS);
+  const [showGodownModal, setShowGodownModal] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     username: '',
@@ -14,6 +19,12 @@ const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false 
     address: '',
     ...initialData,
   });
+
+  useEffect(() => {
+    if (godowns && godowns.length > 0) {
+      setGodownList(godowns);
+    }
+  }, [godowns]);
 
   const [errors, setErrors] = useState({});
 
@@ -219,23 +230,58 @@ const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false 
             <option value={ROLES.ADMIN}>Admin (Full access to all godowns)</option>
           </Input>
 
-          <Input
-            as="select"
-            label="Designated Godown / Location Access"
-            name="assignedLocation"
-            value={formData.assignedLocation}
-            onChange={handleChange}
-            error={errors.assignedLocation}
-            required
-            helperText={formData.role === ROLES.ADMIN ? 'Admins have access to all, but can set a home branch' : 'Staff will only see inventory & records for this place'}
-          >
-            <option value={ALL_LOCATIONS_OPTION}>All Locations (Full Access)</option>
-            {GODOWN_LOCATIONS.map((loc) => (
-              <option key={loc} value={loc}>
-                🏢 {loc} Godown
-              </option>
-            ))}
-          </Input>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Designated Godown / Location Access <span style={{ color: 'var(--danger)' }}>*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowGodownModal(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--primary-light)',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                }}
+              >
+                <FiPlus size={12} /> Add New Godown
+              </button>
+            </div>
+            <select
+              name="assignedLocation"
+              value={formData.assignedLocation}
+              onChange={handleChange}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                backgroundColor: 'var(--bg-secondary)',
+                color: 'var(--text-primary)',
+                fontSize: '0.875rem',
+              }}
+              required
+            >
+              <option value={ALL_LOCATIONS_OPTION}>All Locations (Full Access)</option>
+              {godownList.map((loc) => (
+                <option key={loc} value={loc}>
+                  🏢 {loc} Godown
+                </option>
+              ))}
+            </select>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              {formData.role === ROLES.ADMIN
+                ? 'Admins have access to all, but can set a home branch'
+                : 'Staff will only see inventory & records for this place'}
+            </p>
+          </div>
         </div>
 
         <Input
@@ -256,6 +302,17 @@ const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false 
           </Button>
         </div>
       </div>
+
+      {showGodownModal && (
+        <GodownModal
+          isOpen={showGodownModal}
+          onClose={() => setShowGodownModal(false)}
+          onCreated={(newGodown) => {
+            setGodownList((prev) => [...new Set([...prev, newGodown.name])]);
+            setFormData((prev) => ({ ...prev, assignedLocation: newGodown.name }));
+          }}
+        />
+      )}
     </form>
   );
 };

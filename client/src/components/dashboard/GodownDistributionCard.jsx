@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiMapPin, FiBox, FiLayers, FiDollarSign, FiArrowRight, FiShield, FiTrendingUp } from 'react-icons/fi';
+import { FiMapPin, FiBox, FiLayers, FiDollarSign, FiArrowRight, FiShield, FiTrendingUp, FiPlus } from 'react-icons/fi';
 import { formatCurrency, CURRENCY_SYMBOL } from '../../utils/formatCurrency';
+import GodownModal from '../godowns/GodownModal';
 
 const GODOWN_THEMES = {
   Ranchi: {
@@ -41,8 +42,9 @@ const GODOWN_THEMES = {
   },
 };
 
-const GodownDistributionCard = ({ godownBreakdown = [], totalStock = 0 }) => {
+const GodownDistributionCard = ({ godownBreakdown = [], totalStock = 0, onRefresh }) => {
   const navigate = useNavigate();
+  const [showModal, setShowModal] = useState(false);
 
   const handleNavigateToGodown = (godownName) => {
     navigate(`/products?location=${encodeURIComponent(godownName)}`, {
@@ -110,12 +112,33 @@ const GodownDistributionCard = ({ godownBreakdown = [], totalStock = 0 }) => {
                 margin: '2px 0 0 0',
               }}
             >
-              Multi-location inventory distribution across Ranchi, Jamshedpur, Hazaribagh, Patna & Daltonganj
+              Multi-location inventory distribution across designated branches
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => setShowModal(true)}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '20px',
+              border: '1px solid var(--primary-light)',
+              backgroundColor: 'rgba(108, 92, 231, 0.1)',
+              color: 'var(--primary-light)',
+              fontSize: '0.8125rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all var(--transition-fast)',
+            }}
+          >
+            <FiPlus size={14} /> Add Godown
+          </button>
+
           <button
             type="button"
             onClick={() => navigate('/products')}
@@ -325,6 +348,16 @@ const GodownDistributionCard = ({ godownBreakdown = [], totalStock = 0 }) => {
           );
         })}
       </div>
+
+      {showModal && (
+        <GodownModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          onCreated={() => {
+            if (onRefresh) onRefresh();
+          }}
+        />
+      )}
     </div>
   );
 };

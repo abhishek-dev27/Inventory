@@ -174,6 +174,7 @@ const Dashboard = () => {
         <GodownDistributionCard
           godownBreakdown={stats?.godownBreakdown || []}
           totalStock={stats?.totalQuantity ?? 0}
+          onRefresh={fetchDashboardData}
         />
       )}
 

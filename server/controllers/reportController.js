@@ -3,6 +3,7 @@ const { sequelize } = require('../config/db');
 const StockTransaction = require('../models/StockTransaction');
 const Product = require('../models/Product');
 const User = require('../models/User');
+const Godown = require('../models/Godown');
 const { getDayRange, getMonthRange, buildDateFilter } = require('../utils/reportUtils');
 
 // @desc    Dashboard stats
@@ -79,8 +80,15 @@ const getDashboardStats = async (req, res, next) => {
 
     const productTypeBreakdown = Object.values(typeMap);
 
-    // 2. Godown-wise breakdown
-    const GODOWNS = ['Ranchi', 'Jamshedpur', 'Hazaribagh', 'Patna', 'Daltonganj'];
+    // 2. Godown-wise breakdown (dynamically loaded from DB)
+    const dbGodowns = await Godown.findAll({
+      where: { status: 'active' },
+      order: [['id', 'ASC']],
+    });
+    const GODOWNS = dbGodowns.length > 0
+      ? dbGodowns.map((g) => g.name)
+      : ['Ranchi', 'Jamshedpur', 'Hazaribagh', 'Patna', 'Daltonganj'];
+
     const godownMap = {};
     GODOWNS.forEach((g) => {
       godownMap[g] = {

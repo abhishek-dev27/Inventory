@@ -14,6 +14,7 @@ const reportRoutes = require('./routes/reportRoutes');
 const activityLogRoutes = require('./routes/activityLogRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const accountRoutes = require('./routes/accountRoutes');
+const godownRoutes = require('./routes/godownRoutes');
 
 const cookieParser = require('cookie-parser');
 const hpp = require('hpp');
@@ -129,6 +130,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/accounts', accountRoutes);
+app.use('/api/godowns', godownRoutes);
 
 // Error handling
 app.use(notFound);
