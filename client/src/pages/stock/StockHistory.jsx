@@ -23,6 +23,7 @@ import { stockService } from '../../services/stockService';
 import { formatDateTime, formatRelative, formatDate } from '../../utils/formatDate';
 import { formatCurrency, CURRENCY_SYMBOL } from '../../utils/formatCurrency';
 import { exportStockLedgerPdf, exportSingleVoucherPdf, triggerPrint } from '../../utils/exportPdf';
+import { PRODUCT_TYPES, TYPE_ICONS } from '../../utils/constants';
 import toast from 'react-hot-toast';
 
 const StockHistory = () => {
@@ -32,6 +33,8 @@ const StockHistory = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     type: '',
+    productType: '',
+    location: '',
     startDate: '',
     endDate: '',
   });
@@ -47,6 +50,8 @@ const StockHistory = () => {
         limit: 25,
         search: searchTerm.trim() || undefined,
         type: filters.type || undefined,
+        productType: filters.productType || undefined,
+        location: filters.location || undefined,
         startDate: filters.startDate || undefined,
         endDate: filters.endDate || undefined,
       });
@@ -77,7 +82,7 @@ const StockHistory = () => {
 
   const handleResetFilters = () => {
     setSearchTerm('');
-    setFilters({ type: '', startDate: '', endDate: '' });
+    setFilters({ type: '', productType: '', location: '', startDate: '', endDate: '' });
     setPage(1);
   };
 
@@ -98,34 +103,42 @@ const StockHistory = () => {
       'Date & Time',
       'Movement Type',
       'Product Name',
-      'Unique ID (SKU)',
+      'Unique ID / SKU',
       'Product Type',
-      'Company / Brand',
-      'Capacity',
+      'Brand',
+      'Capacity / Rating',
       'Phase',
       'Serial Numbers',
       'Quantity',
       'Unit',
-      'Person Name (Issued To/From)',
-      'Place / Project Site',
+      'Recipient / Sender Person',
+      'Destination / Origin Site',
       'Reason',
-      'Reference / Work Order #',
-      'Notes',
-      'Operator',
+      'Reference / Bill No',
+      'Notes / Dispatch Comments',
+      'Created By Staff',
     ];
 
     const rows = transactions.map((tx) => {
-      const txSerials = Array.isArray(tx.serialNumbers)
-        ? tx.serialNumbers.join('; ')
-        : typeof tx.serialNumbers === 'string'
-        ? JSON.parse(tx.serialNumbers || '[]').join('; ')
-        : '';
+      let txSerials = '—';
+      if (tx.serialNumbers) {
+        if (Array.isArray(tx.serialNumbers)) {
+          txSerials = tx.serialNumbers.join(', ');
+        } else if (typeof tx.serialNumbers === 'string') {
+          try {
+            const parsed = JSON.parse(tx.serialNumbers);
+            txSerials = Array.isArray(parsed) ? parsed.join(', ') : tx.serialNumbers;
+          } catch (e) {
+            txSerials = tx.serialNumbers;
+          }
+        }
+      }
 
       return [
         tx.id,
         `"${formatDateTime(tx.transactionDate || tx.createdAt)}"`,
-        tx.type.toUpperCase(),
-        `"${tx.product?.name || 'Deleted'}"`,
+        tx.type === 'in' ? 'Stock In (Restock)' : 'Stock Out (Dispatch)',
+        `"${tx.product?.name || '—'}"`,
         `"${tx.product?.sku || '—'}"`,
         `"${tx.product?.productType || '—'}"`,
         `"${tx.product?.brand || '—'}"`,
@@ -172,7 +185,7 @@ const StockHistory = () => {
             Audit history tracking product details, outward quantity, recipient person, destination site, and date & time
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div className="no-print" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <Button
             variant="secondary"
             icon={FiRefreshCw}
@@ -208,8 +221,60 @@ const StockHistory = () => {
         </div>
       </div>
 
+      {/* Category Pills Ribbon - All Visible Together */}
+      <div
+        className="no-print"
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '8px',
+          marginBottom: '16px',
+          alignItems: 'center',
+        }}
+      >
+        {[
+          { id: '', label: 'All Types' },
+          ...PRODUCT_TYPES.map((t) => ({
+            id: t,
+            label: `${TYPE_ICONS[t] || '🏷️'} ${t}`,
+          })),
+        ].map((tab) => {
+          const isActive = (filters.productType || '') === tab.id;
+          return (
+            <button
+              key={tab.id || 'all'}
+              type="button"
+              onClick={() => {
+                setFilters((prev) => ({ ...prev, productType: tab.id }));
+                setPage(1);
+              }}
+              style={{
+                padding: '6px 13px',
+                borderRadius: '8px',
+                fontSize: '0.78rem',
+                fontWeight: isActive ? 800 : 600,
+                border: isActive
+                  ? '1px solid var(--primary-light)'
+                  : '1px solid var(--border)',
+                backgroundColor: isActive ? 'var(--primary)' : 'var(--surface)',
+                color: isActive ? '#ffffff' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all var(--transition-fast)',
+                boxShadow: isActive ? '0 2px 6px rgba(108, 92, 231, 0.25)' : 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Search & Filter Bar */}
-      <div className="card" style={{ padding: '16px 20px', marginBottom: '20px' }}>
+      <div className="card no-print" style={{ padding: '16px 20px', marginBottom: '20px' }}>
         <div
           style={{
             display: 'grid',
@@ -242,6 +307,23 @@ const StockHistory = () => {
               <option value="">All Movements</option>
               <option value="out">Stock Out (Consumption / Dispatch)</option>
               <option value="in">Stock In (Inward Restock)</option>
+            </Input>
+          </div>
+
+          <div>
+            <Input
+              as="select"
+              label="Godown / Place"
+              name="location"
+              value={filters.location}
+              onChange={handleFilterChange}
+            >
+              <option value="">All Godowns</option>
+              {['Ranchi', 'Jamshedpur', 'Hazaribagh', 'Patna', 'Daltonganj'].map((loc) => (
+                <option key={loc} value={loc}>
+                  🏢 {loc}
+                </option>
+              ))}
             </Input>
           </div>
 
@@ -594,7 +676,7 @@ const StockHistory = () => {
               )}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <Button
                   variant="primary"

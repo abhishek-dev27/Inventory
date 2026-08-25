@@ -407,10 +407,9 @@ const StockInForm = ({
           <div
             style={{
               display: 'flex',
+              flexWrap: 'wrap',
               gap: '6px',
-              overflowX: 'auto',
-              paddingBottom: '4px',
-              scrollbarWidth: 'thin',
+              marginBottom: '10px',
             }}
           >
             {[
@@ -419,25 +418,40 @@ const StockInForm = ({
                 label: 'All Items',
               },
               {
-                id: 'inverters',
-                label: '⚡ Inverters',
+                id: 'ongrid',
+                label: '⚡ Ongrid Inverter',
                 match: (p) => {
                   const type = (p.productType || '').toLowerCase();
                   const cat = (p.category || '').toLowerCase();
                   const name = (p.name || '').toLowerCase();
                   const sku = (p.sku || '').toUpperCase();
                   return (
-                    type.includes('inverter') ||
-                    cat.includes('inverter') ||
-                    name.includes('inverter') ||
-                    sku.startsWith('OGI') ||
+                    type.includes('ongrid') ||
+                    name.includes('ongrid') ||
+                    (type.includes('inverter') && !type.includes('hybrid')) ||
+                    sku.startsWith('OGI')
+                  );
+                },
+              },
+              {
+                id: 'hybrid',
+                label: '🔋 Hybrid Inverter',
+                match: (p) => {
+                  const type = (p.productType || '').toLowerCase();
+                  const cat = (p.category || '').toLowerCase();
+                  const name = (p.name || '').toLowerCase();
+                  const sku = (p.sku || '').toUpperCase();
+                  return (
+                    type.includes('hybrid') ||
+                    cat.includes('hybrid') ||
+                    name.includes('hybrid') ||
                     sku.startsWith('HYB')
                   );
                 },
               },
               {
                 id: 'panels',
-                label: '☀️ Solar Panels',
+                label: '☀️ Panels',
                 match: (p) => {
                   const type = (p.productType || '').toLowerCase();
                   const cat = (p.category || '').toLowerCase();
@@ -450,6 +464,101 @@ const StockInForm = ({
                     name.includes('panel') ||
                     name.includes('module') ||
                     sku.startsWith('PNL')
+                  );
+                },
+              },
+              {
+                id: 'batteries',
+                label: '🔋 Battery',
+                match: (p) => {
+                  const type = (p.productType || '').toLowerCase();
+                  const cat = (p.category || '').toLowerCase();
+                  const name = (p.name || '').toLowerCase();
+                  const sku = (p.sku || '').toUpperCase();
+                  return (
+                    type.includes('battery') ||
+                    cat.includes('batter') ||
+                    cat.includes('storage') ||
+                    name.includes('battery') ||
+                    name.includes('lifepo4') ||
+                    name.includes('lithium') ||
+                    name.includes('tubular') ||
+                    sku.startsWith('BAT') ||
+                    sku.startsWith('ESS') ||
+                    sku.startsWith('LFP')
+                  );
+                },
+              },
+              {
+                id: 'acdb',
+                label: '⚡ ACDB',
+                match: (p) => {
+                  const type = (p.productType || '').toLowerCase();
+                  const cat = (p.category || '').toLowerCase();
+                  const name = (p.name || '').toLowerCase();
+                  const sku = (p.sku || '').toUpperCase();
+                  return (
+                    type === 'acdb' ||
+                    type.includes('acdb') ||
+                    cat.includes('acdb') ||
+                    name.includes('acdb') ||
+                    name.includes('ac distribution') ||
+                    sku.startsWith('ACD')
+                  );
+                },
+              },
+              {
+                id: 'dcdb',
+                label: '☀️ DCDB',
+                match: (p) => {
+                  const type = (p.productType || '').toLowerCase();
+                  const cat = (p.category || '').toLowerCase();
+                  const name = (p.name || '').toLowerCase();
+                  const sku = (p.sku || '').toUpperCase();
+                  return (
+                    type === 'dcdb' ||
+                    type.includes('dcdb') ||
+                    cat.includes('dcdb') ||
+                    name.includes('dcdb') ||
+                    name.includes('array junction') ||
+                    sku.startsWith('DCD')
+                  );
+                },
+              },
+              {
+                id: 'earthing',
+                label: '🛡️ Earthing Material',
+                match: (p) => {
+                  const type = (p.productType || '').toLowerCase();
+                  const cat = (p.category || '').toLowerCase();
+                  const name = (p.name || '').toLowerCase();
+                  const sku = (p.sku || '').toUpperCase();
+                  return (
+                    type.includes('earthing') ||
+                    cat.includes('earthing') ||
+                    cat.includes('lightning') ||
+                    name.includes('earthing') ||
+                    name.includes('earth rod') ||
+                    name.includes('chemical rod') ||
+                    name.includes('lightning arrester') ||
+                    sku.startsWith('ETH')
+                  );
+                },
+              },
+              {
+                id: 'msb',
+                label: '🔌 MSB',
+                match: (p) => {
+                  const type = (p.productType || '').toLowerCase();
+                  const cat = (p.category || '').toLowerCase();
+                  const name = (p.name || '').toLowerCase();
+                  const sku = (p.sku || '').toUpperCase();
+                  return (
+                    type.includes('msb') ||
+                    cat.includes('msb') ||
+                    cat.includes('switchgear') ||
+                    name.includes('msb') ||
+                    sku.startsWith('MSB')
                   );
                 },
               },
@@ -469,23 +578,6 @@ const StockInForm = ({
                     name.includes('mcb') ||
                     name.includes('circuit breaker') ||
                     sku.startsWith('MCB')
-                  );
-                },
-              },
-              {
-                id: 'msb',
-                label: '🔌 MSB',
-                match: (p) => {
-                  const type = (p.productType || '').toLowerCase();
-                  const cat = (p.category || '').toLowerCase();
-                  const name = (p.name || '').toLowerCase();
-                  const sku = (p.sku || '').toUpperCase();
-                  return (
-                    type.includes('msb') ||
-                    cat.includes('msb') ||
-                    cat.includes('switchgear') ||
-                    name.includes('msb') ||
-                    sku.startsWith('MSB')
                   );
                 },
               },
@@ -541,30 +633,8 @@ const StockInForm = ({
                 },
               },
               {
-                id: 'batteries',
-                label: '🔋 Battery',
-                match: (p) => {
-                  const type = (p.productType || '').toLowerCase();
-                  const cat = (p.category || '').toLowerCase();
-                  const name = (p.name || '').toLowerCase();
-                  const sku = (p.sku || '').toUpperCase();
-                  return (
-                    type.includes('battery') ||
-                    cat.includes('batter') ||
-                    cat.includes('storage') ||
-                    name.includes('battery') ||
-                    name.includes('lifepo4') ||
-                    name.includes('lithium') ||
-                    name.includes('tubular') ||
-                    sku.startsWith('BAT') ||
-                    sku.startsWith('ESS') ||
-                    sku.startsWith('LFP')
-                  );
-                },
-              },
-              {
                 id: 'spares',
-                label: '🛡️ Spare',
+                label: '🛠️ Spare',
                 match: (p) => {
                   const type = (p.productType || '').toLowerCase();
                   const cat = (p.category || '').toLowerCase();
@@ -576,6 +646,16 @@ const StockInForm = ({
                     sku.startsWith('SPR') ||
                     name.includes('spare')
                   );
+                },
+              },
+              {
+                id: 'other',
+                label: '📦 Other',
+                match: (p) => {
+                  const type = (p.productType || '').toLowerCase();
+                  const cat = (p.category || '').toLowerCase();
+                  const name = (p.name || '').toLowerCase();
+                  return type.includes('other') || cat.includes('other');
                 },
               },
             ].map((tab) => {
@@ -1160,14 +1240,41 @@ const StockInForm = ({
             </div>
           </div>
 
-          <Input
-            label="Receiving Warehouse / Bin Location"
-            name="place"
-            placeholder="e.g. Warehouse Bay 1 / Shelf S-2"
-            value={formData.place}
-            onChange={handleChange}
-            icon={FiMapPin}
-          />
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '4px' }}>
+              <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Receiving Warehouse / Godown Location
+              </label>
+              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                {['Ranchi', 'Jamshedpur', 'Hazaribagh', 'Patna', 'Daltonganj'].map((loc) => (
+                  <button
+                    key={loc}
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, place: `${loc} Godown` }))}
+                    style={{
+                      fontSize: '0.6875rem',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      border: '1px solid var(--border)',
+                      backgroundColor: 'var(--bg-secondary)',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    + {loc}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Input
+              name="place"
+              placeholder="e.g. Ranchi Godown / Bay 1"
+              value={formData.place}
+              onChange={handleChange}
+              icon={FiMapPin}
+            />
+          </div>
 
           <div className="full-width">
             <Input

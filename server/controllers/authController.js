@@ -1,21 +1,53 @@
 const jwt = require('jsonwebtoken');
+const { Op } = require('sequelize');
 const User = require('../models/User');
 const { generateAccessToken, generateRefreshToken } = require('../utils/generateToken');
 const { recordActivity } = require('../utils/clientInfo');
 
-// @desc    Login user
+// @desc    Login user with mobile number, username, or email
 // @route   POST /api/auth/login
 // @access  Public
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, username, phone, identifier, password } = req.body;
+    const loginIdentifier = (identifier || email || username || phone || '').trim();
 
-    if (!email || !password) {
+    if (!loginIdentifier || !password) {
       res.status(400);
-      throw new Error('Please provide email and password');
+      throw new Error('Please enter your mobile number or username and password');
     }
 
-    const user = await User.findOne({ where: { email } });
+    const rawKey = loginIdentifier.trim();
+    const cleanKey = rawKey.toLowerCase();
+    const prefixKey = cleanKey.includes('@') ? cleanKey.split('@')[0] : cleanKey;
+    const cleanDigits = rawKey.replace(/[^0-9]/g, '');
+
+    const queryConditions = [
+      { username: rawKey },
+      { username: cleanKey },
+      { username: prefixKey },
+      { phone: rawKey },
+      { phone: cleanKey },
+      { email: rawKey },
+      { email: cleanKey },
+      { name: rawKey },
+    ];
+
+    if (cleanDigits.length >= 10) {
+      const tenDigits = cleanDigits.slice(-10);
+      queryConditions.push({ phone: { [Op.like]: `%${tenDigits}%` } });
+    }
+
+    if (prefixKey) {
+      queryConditions.push({ email: { [Op.like]: `${prefixKey}@%` } });
+      queryConditions.push({ name: { [Op.like]: `%${prefixKey}%` } });
+    }
+
+    const user = await User.findOne({
+      where: {
+        [Op.or]: queryConditions,
+      },
+    });
 
     // Check if account is currently locked
     if (user && user.isLocked()) {

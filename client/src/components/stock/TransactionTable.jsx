@@ -25,18 +25,18 @@ const TransactionTable = ({ transactions = [], onInspect }) => {
 
   return (
     <div className="table-container">
-      <table style={{ minWidth: '1080px', width: '100%' }}>
+      <table className="transaction-table" style={{ width: '100%' }}>
         <thead>
           <tr>
-            <th style={{ width: '160px' }}>Date & Time</th>
-            <th style={{ width: '120px' }}>Movement</th>
-            <th style={{ width: '260px' }}>Product & Unique ID</th>
-            <th style={{ width: '110px' }}>Quantity</th>
-            <th style={{ width: '180px' }}>Person (Issued To / From)</th>
-            <th style={{ width: '200px' }}>Place / Project Site</th>
-            <th style={{ width: '160px' }}>Reason & Ref #</th>
-            <th style={{ width: '130px' }}>Handled By</th>
-            <th style={{ textAlign: 'right', width: '90px', paddingRight: '20px' }}>Action</th>
+            <th style={{ width: '150px' }}>Date & Time</th>
+            <th style={{ width: '110px' }}>Movement</th>
+            <th>Product & Unique ID</th>
+            <th style={{ width: '90px' }}>Quantity</th>
+            <th style={{ width: '160px' }}>Person (Party)</th>
+            <th style={{ width: '170px' }}>Place / Site</th>
+            <th style={{ width: '140px' }}>Reason & Ref #</th>
+            <th style={{ width: '120px' }}>Handled By</th>
+            <th className="no-print" style={{ textAlign: 'right', width: '80px', paddingRight: '20px' }}>Action</th>
           </tr>
         </thead>
         <tbody>
@@ -204,7 +204,7 @@ const TransactionTable = ({ transactions = [], onInspect }) => {
                 </td>
 
                 {/* Action / Voucher Button */}
-                <td style={{ textAlign: 'right', paddingRight: '20px' }}>
+                <td className="no-print" style={{ textAlign: 'right', paddingRight: '20px' }}>
                   <Button
                     size="sm"
                     variant="ghost"

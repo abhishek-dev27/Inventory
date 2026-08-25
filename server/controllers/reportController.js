@@ -10,9 +10,19 @@ const { getDayRange, getMonthRange, buildDateFilter } = require('../utils/report
 // @access  Private
 const getDashboardStats = async (req, res, next) => {
   try {
-    // 1. Fetch all products to aggregate total stock, valuation & category breakdown
+    const user = req.user;
+    const isStaffRestricted = user && user.role !== 'admin' && user.assignedLocation && user.assignedLocation !== 'All Locations';
+    const prodWhere = {};
+    if (isStaffRestricted) {
+      prodWhere.location = { [Op.like]: `%${user.assignedLocation}%` };
+    } else if (req.query.location && req.query.location !== 'All Locations' && req.query.location !== 'all') {
+      prodWhere.location = { [Op.like]: `%${req.query.location}%` };
+    }
+
+    // 1. Fetch products to aggregate total stock, valuation & category breakdown
     const allProducts = await Product.findAll({
-      attributes: ['id', 'name', 'productType', 'category', 'quantity', 'price', 'lowStockThreshold', 'sku'],
+      where: prodWhere,
+      attributes: ['id', 'name', 'productType', 'category', 'quantity', 'price', 'lowStockThreshold', 'sku', 'location'],
     });
 
     const totalProducts = allProducts.length;
@@ -69,22 +79,80 @@ const getDashboardStats = async (req, res, next) => {
 
     const productTypeBreakdown = Object.values(typeMap);
 
-    // 2. Today's transactions
+    // 2. Godown-wise breakdown
+    const GODOWNS = ['Ranchi', 'Jamshedpur', 'Hazaribagh', 'Patna', 'Daltonganj'];
+    const godownMap = {};
+    GODOWNS.forEach((g) => {
+      godownMap[g] = {
+        name: g,
+        totalQuantity: 0,
+        productCount: 0,
+        totalValuation: 0,
+        lowStockCount: 0,
+      };
+    });
+
+    allProducts.forEach((p) => {
+      const qty = parseInt(p.quantity, 10) || 0;
+      const price = parseFloat(p.price) || 0;
+      const threshold = parseInt(p.lowStockThreshold, 10) || 0;
+      const loc = (p.location || '').trim();
+
+      let matchedGodown = GODOWNS.find((g) => loc.toLowerCase().includes(g.toLowerCase()));
+      if (!matchedGodown) {
+        matchedGodown = 'Ranchi';
+      }
+
+      godownMap[matchedGodown].totalQuantity += qty;
+      godownMap[matchedGodown].productCount += 1;
+      godownMap[matchedGodown].totalValuation += qty * price;
+      if (qty <= threshold) {
+        godownMap[matchedGodown].lowStockCount += 1;
+      }
+    });
+
+    let godownBreakdown = GODOWNS.map((g) => godownMap[g]);
+    if (isStaffRestricted) {
+      godownBreakdown = godownBreakdown.filter(
+        (g) => g.name.toLowerCase() === user.assignedLocation.toLowerCase()
+      );
+    }
+
+    // 3. Today's transactions (strictly scoped by location for staff)
     const { start, end } = getDayRange();
+    const txWhere = { createdAt: { [Op.between]: [start, end] } };
+    if (isStaffRestricted) {
+      txWhere[Op.or] = [
+        { destination: { [Op.like]: `%${user.assignedLocation}%` } },
+        { location: { [Op.like]: `%${user.assignedLocation}%` } },
+        { recipient: { [Op.like]: `%${user.assignedLocation}%` } },
+      ];
+    }
+
     const todayTransactions = await StockTransaction.count({
-      where: { createdAt: { [Op.between]: [start, end] } },
+      where: txWhere,
     });
 
     const todayStockIn = (await StockTransaction.sum('quantity', {
-      where: { type: 'in', createdAt: { [Op.between]: [start, end] } },
+      where: { ...txWhere, type: 'in' },
     })) || 0;
 
     const todayStockOut = (await StockTransaction.sum('quantity', {
-      where: { type: 'out', createdAt: { [Op.between]: [start, end] } },
+      where: { ...txWhere, type: 'out' },
     })) || 0;
 
-    // 3. Recent activity (last 10 transactions)
+    // 4. Recent activity (last 10 transactions)
+    const recentWhere = {};
+    if (isStaffRestricted) {
+      recentWhere[Op.or] = [
+        { destination: { [Op.like]: `%${user.assignedLocation}%` } },
+        { location: { [Op.like]: `%${user.assignedLocation}%` } },
+        { recipient: { [Op.like]: `%${user.assignedLocation}%` } },
+      ];
+    }
+
     const recentActivity = await StockTransaction.findAll({
+      where: recentWhere,
       include: [
         { model: Product, as: 'product', attributes: ['id', 'name', 'sku'] },
         { model: User, as: 'user', attributes: ['id', 'name'] },
@@ -105,6 +173,8 @@ const getDashboardStats = async (req, res, next) => {
         todayStockOut,
         recentActivity,
         productTypeBreakdown,
+        godownBreakdown,
+        assignedLocation: isStaffRestricted ? user.assignedLocation : 'All Locations',
       },
     });
   } catch (error) {

@@ -144,7 +144,6 @@ input, select, textarea {
   padding: 24px 32px;
   max-width: 1400px;
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
 }
 
 .page-header {
@@ -177,7 +176,6 @@ input, select, textarea {
   padding: 24px;
   transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base), background-color var(--transition-base);
   box-shadow: var(--shadow-sm);
-  transform: translateZ(0);
 }
 
 .card:hover {
@@ -720,58 +718,101 @@ tr:hover td {
 /* ---- Print Stylesheet ---- */
 @media print {
   @page {
-    margin: 10mm 12mm 10mm 12mm;
+    margin: 8mm 10mm 8mm 10mm;
     size: auto;
   }
 
-  body, html {
-    background: #ffffff !important;
-    color: #0f172a !important;
-    font-size: 10pt !important;
+  *,
+  *::before,
+  *::after {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
   }
 
-  /* Hide UI navigation, action bars, buttons, and decorative background */
+  html, body, #root {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 8.5pt !important;
+    line-height: 1.3 !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+    position: static !important;
+  }
+
+  /* Reset main layout flex container and sidebar margin offset */
+  .app-layout {
+    display: block !important;
+    width: 100% !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  .app-main-content-wrapper {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    margin-left: 0 !important;
+    padding: 0 !important;
+    position: static !important;
+  }
+
+  .app-main-content,
+  main {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    overflow-y: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: static !important;
+  }
+
+  /* Hide screen-only interactive UI elements */
   aside,
   header,
+  nav,
   .sidebar,
+  .navbar,
   .no-print,
   button,
   .btn,
   .pagination,
   .filter-bar,
+  .responsive-filter-toolbar,
   .form-actions,
-  .badge-container button,
   .modal-close-btn,
-  .toast-container {
+  .toast-container,
+  .search-box,
+  .barcode-scanner-modal,
+  input,
+  select,
+  textarea {
     display: none !important;
   }
 
-  /* Expand Modal for Fullscreen Clean Print */
-  .modal-overlay {
-    position: static !important;
-    background: transparent !important;
-    padding: 0 !important;
-    display: block !important;
-  }
-
-  .modal-container,
-  .modal-content {
-    max-width: 100% !important;
-    width: 100% !important;
-    box-shadow: none !important;
-    border: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    background: #ffffff !important;
-  }
-
+  /* Main containers alignment */
   .main-content,
   .layout,
   .page-container,
-  .card,
-  .table-container {
+  .card {
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
@@ -779,47 +820,196 @@ tr:hover td {
     background: #ffffff !important;
     border: none !important;
     box-shadow: none !important;
+    overflow: visible !important;
   }
 
-  table {
+  .page-header {
+    margin-bottom: 12px !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+    padding-bottom: 8px !important;
+  }
+
+  .page-title {
+    font-size: 1.2rem !important;
+    color: #0f172a !important;
+    margin-bottom: 2px !important;
+  }
+
+  .page-subtitle {
+    font-size: 0.75rem !important;
+    color: #475569 !important;
+  }
+
+  /* Grids & Cards in Print */
+  .grid-2 {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .grid-3 {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .stats-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+    margin-bottom: 12px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Tables in Print: eliminate horizontal scroll and fill width cleanly */
+  .table-container {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+    border: none !important;
+    background: transparent !important;
+    margin: 0 !important;
+    padding: 0 !important;
     width: 100% !important;
+  }
+
+  table,
+  .transaction-table {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
     border-collapse: collapse !important;
     border: 1px solid #cbd5e1 !important;
     color: #0f172a !important;
+    font-size: 7.5pt !important;
+    margin: 6px 0 !important;
+    table-layout: auto !important;
     page-break-inside: auto !important;
-  }
-
-  tr {
-    page-break-inside: avoid !important;
-    page-break-after: auto !important;
   }
 
   thead {
     display: table-header-group !important;
-    background: #f1f5f9 !important;
-    color: #0f172a !important;
+  }
+
+  tbody {
+    display: table-row-group !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   th {
     border: 1px solid #cbd5e1 !important;
     color: #0f172a !important;
     font-weight: 700 !important;
-    padding: 6px 10px !important;
-    background: #f8fafc !important;
-    font-size: 8.5pt !important;
+    padding: 5px 6px !important;
+    background: #f1f5f9 !important;
+    font-size: 7.5pt !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.01em !important;
+    white-space: normal !important;
   }
 
   td {
     border: 1px solid #e2e8f0 !important;
     color: #1e293b !important;
-    padding: 6px 10px !important;
-    font-size: 8.5pt !important;
+    padding: 5px 6px !important;
+    font-size: 7.5pt !important;
+    vertical-align: top !important;
+    word-break: break-word !important;
+    white-space: normal !important;
   }
 
+  .sticky-left-column,
+  .sticky-right-actions {
+    position: static !important;
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+    min-width: auto !important;
+    max-width: none !important;
+  }
+
+  /* Badges */
   .badge {
     border: 1px solid #cbd5e1 !important;
     color: #0f172a !important;
     background: #f8fafc !important;
+    padding: 1px 4px !important;
+    font-size: 7pt !important;
+    border-radius: 3px !important;
+    display: inline-block !important;
+  }
+
+  /* When printing with a Modal open (Vouchers, Details, Bills) */
+  body:has(.modal-overlay) .page-container,
+  body:has(.modal-overlay) .sidebar,
+  body:has(.modal-overlay) .navbar,
+  body:has(.modal-overlay) header {
+    display: none !important;
+  }
+
+  .modal-overlay {
+    position: static !important;
+    inset: auto !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    z-index: auto !important;
+  }
+
+  .modal-container,
+  .modal-content {
+    position: static !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .modal-header {
+    padding: 10px 14px !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+    background: #f8fafc !important;
+  }
+
+  .modal-header h3 {
+    font-size: 1.1rem !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+  }
+
+  .modal-header p {
+    font-size: 0.75rem !important;
+    color: #475569 !important;
+  }
+
+  .modal-body {
+    padding: 14px !important;
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
   }
 
   .print-only {

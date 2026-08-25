@@ -42,8 +42,36 @@ const getProducts = async (req, res, next) => {
     if (category) {
       where.category = category;
     }
+
+    // Godown / Location Access Control
+    const user = req.user;
+    const isStaffRestricted = user && user.role !== 'admin' && user.assignedLocation && user.assignedLocation !== 'All Locations';
+    if (isStaffRestricted) {
+      where.location = { [Op.like]: `%${user.assignedLocation}%` };
+    } else if (req.query.location && req.query.location !== 'All Locations' && req.query.location !== 'all') {
+      where.location = { [Op.like]: `%${req.query.location}%` };
+    }
+
     if (productType) {
-      where.productType = productType;
+      if (productType === 'Ongrid Inverter') {
+        where.productType = { [Op.or]: ['Ongrid Inverter', 'Inverters', 'Inverter'] };
+      } else if (productType === 'Hybrid Inverter') {
+        where.productType = { [Op.or]: ['Hybrid Inverter', 'Inverters', 'Hybrid'] };
+      } else if (productType === 'Panels') {
+        where.productType = { [Op.or]: ['Panels', 'Solar Panels', 'Solar Panels & Modules', 'Panel'] };
+      } else if (productType === 'Battery') {
+        where.productType = { [Op.or]: ['Battery', 'Batteries', 'Batteries & Energy Storage'] };
+      } else if (productType === 'Structure') {
+        where.productType = { [Op.or]: ['Structure', 'Structures', 'Mounting Structure & Hardware'] };
+      } else if (productType === 'Wires') {
+        where.productType = { [Op.or]: ['Wires', 'Cables & Wiring', 'Wire', 'Cable'] };
+      } else if (productType === 'Consumable') {
+        where.productType = { [Op.or]: ['Consumable', 'Consumables', 'Installation Consumables'] };
+      } else if (productType === 'Spare') {
+        where.productType = { [Op.or]: ['Spare', 'Spares', 'Maintenance Spares & Components'] };
+      } else {
+        where.productType = productType;
+      }
     }
 
     const { count, rows: products } = await Product.findAndCountAll({

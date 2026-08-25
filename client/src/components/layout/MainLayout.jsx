@@ -28,7 +28,7 @@ const MainLayout = () => {
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
+    <div className="app-layout" style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
       {/* Sidebar */}
       <Sidebar
         isOpen={isSidebarOpen}
@@ -38,6 +38,7 @@ const MainLayout = () => {
 
       {/* Main Content Area */}
       <div
+        className="app-main-content-wrapper"
         style={{
           flex: 1,
           display: 'flex',
@@ -48,7 +49,7 @@ const MainLayout = () => {
         }}
       >
         <Navbar onToggleSidebar={toggleSidebar} />
-        <main style={{ flex: 1, overflowY: 'auto' }}>
+        <main className="app-main-content" style={{ flex: 1, overflowY: 'auto' }}>
           <Outlet />
         </main>
       </div>

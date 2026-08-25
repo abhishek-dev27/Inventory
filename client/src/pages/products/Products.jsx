@@ -23,6 +23,9 @@ const Products = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState(initialCategory);
   const [productType, setProductType] = useState(initialType);
+  const [locationFilter, setLocationFilter] = useState('');
+  const [availableTypes, setAvailableTypes] = useState([]);
+  const [availableCategories, setAvailableCategories] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -30,6 +33,27 @@ const Products = () => {
   const [pagination, setPagination] = useState({ total: 0, pages: 1 });
 
   const { isAdmin } = useAuth();
+
+  const fetchMeta = async () => {
+    try {
+      const [tRes, cRes] = await Promise.allSettled([
+        productService.getProductTypes(),
+        productService.getCategories(),
+      ]);
+      if (tRes.status === 'fulfilled' && tRes.value?.data) {
+        setAvailableTypes(tRes.value.data);
+      }
+      if (cRes.status === 'fulfilled' && cRes.value?.data) {
+        setAvailableCategories(cRes.value.data);
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    fetchMeta();
+  }, []);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -40,6 +64,7 @@ const Products = () => {
         search: searchTerm,
         category,
         productType,
+        location: locationFilter,
       });
       setProducts(response.data || []);
       if (response.pagination) {
@@ -57,7 +82,7 @@ const Products = () => {
       fetchProducts();
     }, 250);
     return () => clearTimeout(debounce);
-  }, [searchTerm, category, productType, page]);
+  }, [searchTerm, category, productType, locationFilter, page]);
 
   const handleDelete = async () => {
     if (!deleteCandidate) return;
@@ -80,7 +105,7 @@ const Products = () => {
       <div className="page-header">
         <div>
           <h1 className="page-title">Products Directory</h1>
-          <p className="page-subtitle">Manage catalog items, pricing, SKU codes, and thresholds</p>
+          <p className="page-subtitle">Manage catalog items, pricing, SKU codes, and godown stock</p>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <Button
@@ -124,6 +149,13 @@ const Products = () => {
           setCategory(val);
           setPage(1);
         }}
+        location={locationFilter}
+        onLocationChange={(val) => {
+          setLocationFilter(val);
+          setPage(1);
+        }}
+        categories={availableCategories}
+        productTypes={availableTypes}
       />
 
       {/* Table Content */}

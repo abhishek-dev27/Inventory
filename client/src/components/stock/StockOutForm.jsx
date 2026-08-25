@@ -43,25 +43,40 @@ import toast from 'react-hot-toast';
 export const CATEGORY_TABS = [
   { id: 'all', label: 'All Items', icon: FiLayers },
   {
-    id: 'inverters',
-    label: '⚡ Inverters',
+    id: 'ongrid',
+    label: '⚡ Ongrid Inverter',
     match: (p) => {
       const type = (p.productType || '').toLowerCase();
       const cat = (p.category || '').toLowerCase();
       const name = (p.name || '').toLowerCase();
       const sku = (p.sku || '').toUpperCase();
       return (
-        type.includes('inverter') ||
-        cat.includes('inverter') ||
-        name.includes('inverter') ||
-        sku.startsWith('OGI') ||
+        type.includes('ongrid') ||
+        name.includes('ongrid') ||
+        (type.includes('inverter') && !type.includes('hybrid')) ||
+        sku.startsWith('OGI')
+      );
+    },
+  },
+  {
+    id: 'hybrid',
+    label: '🔋 Hybrid Inverter',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type.includes('hybrid') ||
+        cat.includes('hybrid') ||
+        name.includes('hybrid') ||
         sku.startsWith('HYB')
       );
     },
   },
   {
     id: 'panels',
-    label: '☀️ Solar Panels',
+    label: '☀️ Panels',
     match: (p) => {
       const type = (p.productType || '').toLowerCase();
       const cat = (p.category || '').toLowerCase();
@@ -74,6 +89,106 @@ export const CATEGORY_TABS = [
         name.includes('panel') ||
         name.includes('module') ||
         sku.startsWith('PNL')
+      );
+    },
+  },
+  {
+    id: 'batteries',
+    label: '🔋 Battery',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type.includes('battery') ||
+        cat.includes('batter') ||
+        cat.includes('storage') ||
+        cat.includes('energy storage') ||
+        name.includes('battery') ||
+        name.includes('lifepo4') ||
+        name.includes('lithium') ||
+        name.includes('tubular') ||
+        name.includes('ess') ||
+        sku.startsWith('BAT') ||
+        sku.startsWith('ESS') ||
+        sku.startsWith('LFP')
+      );
+    },
+  },
+  {
+    id: 'acdb',
+    label: '⚡ ACDB',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type.includes('acdb') ||
+        cat.includes('acdb') ||
+        cat.includes('ac distribution') ||
+        name.includes('acdb') ||
+        name.includes('ac distribution') ||
+        sku.startsWith('ACD')
+      );
+    },
+  },
+  {
+    id: 'dcdb',
+    label: '☀️ DCDB',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type.includes('dcdb') ||
+        cat.includes('dcdb') ||
+        cat.includes('dc distribution') ||
+        name.includes('dcdb') ||
+        name.includes('dc distribution') ||
+        sku.startsWith('DCD')
+      );
+    },
+  },
+  {
+    id: 'earthing',
+    label: '🛡️ Earthing Material',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type.includes('earthing') ||
+        cat.includes('earthing') ||
+        cat.includes('grounding') ||
+        name.includes('earthing') ||
+        name.includes('electrode') ||
+        name.includes('gi strip') ||
+        name.includes('copper strip') ||
+        name.includes('compound') ||
+        name.includes('bentonite') ||
+        sku.startsWith('ETH')
+      );
+    },
+  },
+  {
+    id: 'msb',
+    label: '🔌 MSB',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type.includes('msb') ||
+        cat.includes('msb') ||
+        cat.includes('switchgear') ||
+        name.includes('msb') ||
+        name.includes('switch board') ||
+        sku.startsWith('MSB')
       );
     },
   },
@@ -93,24 +208,6 @@ export const CATEGORY_TABS = [
         name.includes('mcb') ||
         name.includes('circuit breaker') ||
         sku.startsWith('MCB')
-      );
-    },
-  },
-  {
-    id: 'msb',
-    label: '🔌 MSB',
-    match: (p) => {
-      const type = (p.productType || '').toLowerCase();
-      const cat = (p.category || '').toLowerCase();
-      const name = (p.name || '').toLowerCase();
-      const sku = (p.sku || '').toUpperCase();
-      return (
-        type.includes('msb') ||
-        cat.includes('msb') ||
-        cat.includes('switchgear') ||
-        name.includes('msb') ||
-        name.includes('switch board') ||
-        sku.startsWith('MSB')
       );
     },
   },
@@ -169,32 +266,8 @@ export const CATEGORY_TABS = [
     },
   },
   {
-    id: 'batteries',
-    label: '🔋 Battery',
-    match: (p) => {
-      const type = (p.productType || '').toLowerCase();
-      const cat = (p.category || '').toLowerCase();
-      const name = (p.name || '').toLowerCase();
-      const sku = (p.sku || '').toUpperCase();
-      return (
-        type.includes('battery') ||
-        cat.includes('batter') ||
-        cat.includes('storage') ||
-        cat.includes('energy storage') ||
-        name.includes('battery') ||
-        name.includes('lifepo4') ||
-        name.includes('lithium') ||
-        name.includes('tubular') ||
-        name.includes('ess') ||
-        sku.startsWith('BAT') ||
-        sku.startsWith('ESS') ||
-        sku.startsWith('LFP')
-      );
-    },
-  },
-  {
     id: 'spares',
-    label: '🛡️ Spare',
+    label: '🛠️ Spare',
     match: (p) => {
       const type = (p.productType || '').toLowerCase();
       const cat = (p.category || '').toLowerCase();
@@ -206,6 +279,16 @@ export const CATEGORY_TABS = [
         sku.startsWith('SPR') ||
         name.includes('spare')
       );
+    },
+  },
+  {
+    id: 'other',
+    label: '📦 Other',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      return type.includes('other') || cat.includes('other');
     },
   },
 ];
@@ -899,15 +982,39 @@ const StockOutForm = ({
 
           {/* Place / Destination */}
           <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '4px' }}>
+              <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Place / Project Site / Godown Destination
+              </label>
+              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                {['Ranchi', 'Jamshedpur', 'Hazaribagh', 'Patna', 'Daltonganj'].map((loc) => (
+                  <button
+                    key={loc}
+                    type="button"
+                    onClick={() => setBillHeader((prev) => ({ ...prev, place: `${loc} Godown` }))}
+                    style={{
+                      fontSize: '0.6875rem',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      border: '1px solid var(--border)',
+                      backgroundColor: 'var(--bg-secondary)',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    + {loc}
+                  </button>
+                ))}
+              </div>
+            </div>
             <Input
               icon={FiMapPin}
-              label="Place / Project Site / Delivery Address"
               name="place"
-              placeholder="e.g. 100kW Rooftop Solar Project - Site B, Jaipur"
+              placeholder="e.g. 100kW Rooftop Solar Project - Ranchi / Site B"
               value={billHeader.place}
               onChange={handleHeaderChange}
               error={errors.place}
-              helperText="Project installation address or client delivery site"
+              helperText="Project installation address, client delivery site, or transfer godown"
               required
             />
           </div>
@@ -1239,10 +1346,9 @@ const StockOutForm = ({
                   <div
                     style={{
                       display: 'flex',
+                      flexWrap: 'wrap',
                       gap: '6px',
-                      overflowX: 'auto',
-                      paddingBottom: '4px',
-                      scrollbarWidth: 'thin',
+                      marginBottom: '10px',
                     }}
                   >
                     {CATEGORY_TABS.map((tab) => {

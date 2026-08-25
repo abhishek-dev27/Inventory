@@ -11,9 +11,14 @@ const getUsers = async (req, res, next) => {
 
     const where = {};
     if (search) {
+      const q = `%${search.trim()}%`;
       where[Op.or] = [
-        { name: { [Op.like]: `%${search}%` } },
-        { email: { [Op.like]: `%${search}%` } },
+        { name: { [Op.like]: q } },
+        { username: { [Op.like]: q } },
+        { phone: { [Op.like]: q } },
+        { email: { [Op.like]: q } },
+        { address: { [Op.like]: q } },
+        { assignedLocation: { [Op.like]: q } },
       ];
     }
     if (role) {
@@ -69,7 +74,17 @@ const { validatePasswordStrength } = require('../utils/passwordValidator');
 // @access  Private/Admin
 const createUser = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, username, phone, email, password, role, assignedLocation, address } = req.body;
+
+    if (!name || !name.trim()) {
+      res.status(400);
+      throw new Error('Full Name is required');
+    }
+
+    // Auto-generate username from name if not provided
+    const cleanUsername = (username || name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cleanPhone = phone ? String(phone).trim() : null;
+    const cleanEmail = email ? String(email).trim() : `${cleanUsername || Date.now()}@sologix.local`;
 
     // Validate password complexity
     const passwordCheck = validatePasswordStrength(password);
@@ -78,13 +93,32 @@ const createUser = async (req, res, next) => {
       throw new Error(passwordCheck.message);
     }
 
-    const existingUser = await User.findOne({ where: { email } });
-    if (existingUser) {
-      res.status(409);
-      throw new Error('User with this email already exists');
+    // Check duplicate username if specified
+    if (cleanUsername) {
+      const existingUser = await User.findOne({
+        where: {
+          [Op.or]: [
+            { username: cleanUsername },
+            ...(cleanPhone ? [{ phone: cleanPhone }] : []),
+          ],
+        },
+      });
+      if (existingUser) {
+        res.status(409);
+        throw new Error('A user with this username or mobile number already exists');
+      }
     }
 
-    const user = await User.create({ name, email, password, role });
+    const user = await User.create({
+      name: name.trim(),
+      username: cleanUsername,
+      phone: cleanPhone,
+      email: cleanEmail,
+      password,
+      role: role || 'staff',
+      assignedLocation: assignedLocation || 'All Locations',
+      address: address ? address.trim() : null,
+    });
 
     res.status(201).json({
       success: true,
@@ -107,11 +141,15 @@ const updateUser = async (req, res, next) => {
       throw new Error('User not found');
     }
 
-    const { name, email, password, role, unlockAccount } = req.body;
+    const { name, username, phone, email, password, role, assignedLocation, address, unlockAccount } = req.body;
 
-    if (name) user.name = name;
-    if (email) user.email = email;
-    if (role) user.role = role;
+    if (name !== undefined) user.name = name.trim();
+    if (username !== undefined) user.username = username ? username.trim().toLowerCase() : user.username;
+    if (phone !== undefined) user.phone = phone ? phone.trim() : null;
+    if (email !== undefined) user.email = email ? email.trim() : user.email;
+    if (role !== undefined) user.role = role;
+    if (assignedLocation !== undefined) user.assignedLocation = assignedLocation;
+    if (address !== undefined) user.address = address ? address.trim() : null;
 
     // Unlock account if requested by admin
     if (unlockAccount) {

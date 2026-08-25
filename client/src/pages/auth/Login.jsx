@@ -19,7 +19,7 @@ import toast from 'react-hot-toast';
 const Login = () => {
   const [selectedRole, setSelectedRole] = useState('admin'); // 'admin' | 'staff'
   const [formData, setFormData] = useState({
-    email: '',
+    identifier: '',
     password: '',
   });
   const [loading, setLoading] = useState(false);
@@ -43,14 +43,14 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.email || !formData.password) {
-      setError('Please enter both your email address and password');
+    if (!formData.identifier?.trim() || !formData.password) {
+      setError('Please enter your username or mobile number and password');
       return;
     }
 
     setLoading(true);
     try {
-      await login(formData.email, formData.password);
+      await login(formData.identifier.trim(), formData.password);
       toast.success(
         selectedRole === 'admin'
           ? 'Welcome to Administrator Portal'
@@ -58,7 +58,7 @@ const Login = () => {
       );
       navigate('/');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Invalid email or password. Please try again.';
+      const msg = err.response?.data?.message || 'Invalid username, mobile number, or password. Please try again.';
       setError(msg);
       toast.error(msg);
     } finally {
@@ -309,15 +309,15 @@ const Login = () => {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
             <Input
-              label={isAdmin ? 'Administrator Email Address' : 'Staff / Technician Email'}
-              id="email"
-              name="email"
-              type="email"
-              placeholder={isAdmin ? 'admin@inventory.com' : 'staff@inventory.com'}
-              value={formData.email}
+              label={isAdmin ? 'Administrator Username or Mobile No' : 'Staff Username or Mobile No'}
+              id="identifier"
+              name="identifier"
+              type="text"
+              placeholder="Enter username or mobile number"
+              value={formData.identifier}
               onChange={handleChange}
-              icon={FiMail}
-              autoComplete="email"
+              icon={FiUser}
+              autoComplete="username"
               style={{
                 backgroundColor: '#f8fafc',
                 borderColor: '#cbd5e1',

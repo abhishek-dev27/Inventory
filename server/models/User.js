@@ -16,14 +16,13 @@ const User = sequelize.define('User', {
       len: { args: [2, 100], msg: 'Name must be between 2 and 100 characters' },
     },
   },
+  username: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
   email: {
     type: DataTypes.STRING(255),
-    allowNull: false,
-    unique: { msg: 'Email already exists' },
-    validate: {
-      isEmail: { msg: 'Please provide a valid email' },
-      notEmpty: { msg: 'Email is required' },
-    },
+    allowNull: true,
   },
   password: {
     type: DataTypes.STRING(255),
@@ -37,6 +36,19 @@ const User = sequelize.define('User', {
     type: DataTypes.ENUM('admin', 'staff'),
     defaultValue: 'staff',
     allowNull: false,
+  },
+  assignedLocation: {
+    type: DataTypes.STRING(100),
+    defaultValue: 'All Locations',
+    allowNull: true,
+  },
+  address: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  phone: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
   },
   refreshToken: {
     type: DataTypes.STRING(500),

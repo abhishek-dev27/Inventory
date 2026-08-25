@@ -21,6 +21,11 @@ export const productService = {
     return data;
   },
 
+  getProductTypes: async () => {
+    const { data } = await api.get('/products/types');
+    return data;
+  },
+
   create: async (productData) => {
     const { data } = await api.post('/products', productData);
     return data;

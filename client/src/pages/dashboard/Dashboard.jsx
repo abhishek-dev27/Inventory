@@ -10,11 +10,13 @@ import {
 import StatCard from '../../components/dashboard/StatCard';
 import StockChart from '../../components/dashboard/StockChart';
 import CategoryDistributionChart from '../../components/dashboard/CategoryDistributionChart';
+import GodownDistributionCard from '../../components/dashboard/GodownDistributionCard';
 import CustomerPaymentPendingCard from '../../components/dashboard/CustomerPaymentPendingCard';
 import RecentActivity from '../../components/dashboard/RecentActivity';
 import LowStockList from '../../components/dashboard/LowStockList';
 import Button from '../../components/common/Button';
 import Loader from '../../components/common/Loader';
+import { useAuth } from '../../hooks/useAuth';
 import { reportService } from '../../services/reportService';
 import { productService } from '../../services/productService';
 import toast from 'react-hot-toast';
@@ -23,6 +25,8 @@ const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [lowStock, setLowStock] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const { user, isAdmin } = useAuth();
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -48,13 +52,21 @@ const Dashboard = () => {
     return <Loader fullScreen text="Loading Inventory Dashboard..." />;
   }
 
+  const assignedLocation = user?.assignedLocation || stats?.assignedLocation || 'Branch';
+
   return (
     <div className="page-container">
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Executive Inventory Dashboard</h1>
-          <p className="page-subtitle">Real-time overview of catalog stock, available units, low stock alerts, and daily movements</p>
+          <h1 className="page-title">
+            {isAdmin ? 'Executive Inventory Dashboard' : `${assignedLocation} Godown Dashboard`}
+          </h1>
+          <p className="page-subtitle">
+            {isAdmin
+              ? 'Real-time overview of catalog stock, available units, low stock alerts, and daily movements across all branches'
+              : `Real-time catalog stock, available units, and daily inward/outward movements for ${assignedLocation} godown`}
+          </p>
         </div>
         <Button
           variant="secondary"
@@ -66,12 +78,56 @@ const Dashboard = () => {
         </Button>
       </div>
 
+      {/* Staff Dedicated Branch Scope Banner */}
+      {!isAdmin && (
+        <div
+          style={{
+            padding: '14px 18px',
+            borderRadius: '12px',
+            backgroundColor: 'rgba(0, 184, 148, 0.08)',
+            border: '1px solid rgba(0, 184, 148, 0.25)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '10px',
+            marginBottom: '20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '1.4rem' }}>🏢</span>
+            <div>
+              <strong style={{ color: 'var(--text-primary)', fontSize: '0.92rem' }}>
+                Designated Workplace: {assignedLocation} Godown
+              </strong>
+              <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                You have authorized access strictly scoped to this godown's catalog, stock transactions, and inventory.
+              </p>
+            </div>
+          </div>
+          <span
+            style={{
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              backgroundColor: 'var(--success)',
+              color: '#ffffff',
+              padding: '3px 10px',
+              borderRadius: '20px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
+            Authorized Branch
+          </span>
+        </div>
+      )}
+
       {/* KPI Stats Grid */}
       <div className="stats-grid">
         <StatCard
           title="Total SKUs"
           value={stats?.totalProducts ?? 0}
-          subtitle="Distinct catalog items"
+          subtitle={isAdmin ? 'Distinct catalog items' : `Items in ${assignedLocation}`}
           icon={FiBox}
           color="primary"
           to="/products"
@@ -80,7 +136,7 @@ const Dashboard = () => {
           title="Total In Stock"
           value={stats?.totalQuantity ?? 0}
           unit="Units"
-          subtitle="Available in warehouse"
+          subtitle={`Available in ${isAdmin ? 'all warehouses' : assignedLocation}`}
           icon={FiLayers}
           color="success"
           to="/products"
@@ -106,14 +162,22 @@ const Dashboard = () => {
           title="Today's Stock Out"
           value={(stats?.todayStockOut || 0) > 0 ? `-${stats.todayStockOut}` : '0'}
           unit="Units"
-          subtitle="Dispatched from warehouse"
+          subtitle={`Dispatched from ${isAdmin ? 'warehouse' : assignedLocation}`}
           icon={FiArrowUpRight}
           color="danger"
           to="/stock/history"
         />
       </div>
 
-      {/* 1. CIRCULAR GRAPH: PRODUCT TYPE DISTRIBUTION & AVAILABLE STOCK */}
+      {/* 1. GODOWN & BRANCH STOCK GROUPS (ADMIN ONLY) */}
+      {isAdmin && (
+        <GodownDistributionCard
+          godownBreakdown={stats?.godownBreakdown || []}
+          totalStock={stats?.totalQuantity ?? 0}
+        />
+      )}
+
+      {/* 2. CIRCULAR GRAPH: PRODUCT TYPE DISTRIBUTION & AVAILABLE STOCK */}
       <div style={{ marginBottom: '28px' }}>
         <CategoryDistributionChart
           breakdown={stats?.productTypeBreakdown || []}
@@ -121,7 +185,7 @@ const Dashboard = () => {
         />
       </div>
 
-      {/* 2. CIRCULAR GRAPH & TILES: CUSTOMER & PAYMENT PENDING OVERVIEW */}
+      {/* 3. CIRCULAR GRAPH & TILES: CUSTOMER & PAYMENT PENDING OVERVIEW */}
       <CustomerPaymentPendingCard />
 
       {/* 3. TIMELINE STOCK INFLOW VS OUTFLOW CHART */}

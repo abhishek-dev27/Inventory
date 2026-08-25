@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import Input from '../common/Input';
 import Button from '../common/Button';
-import { ROLES } from '../../utils/constants';
+import { ROLES, GODOWN_LOCATIONS, ALL_LOCATIONS_OPTION } from '../../utils/constants';
 
 const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false }) => {
   const [formData, setFormData] = useState({
     name: '',
-    email: '',
+    username: '',
+    phone: '',
     password: '',
     role: ROLES.STAFF,
+    assignedLocation: ALL_LOCATIONS_OPTION,
+    address: '',
     ...initialData,
   });
 
@@ -19,6 +22,11 @@ const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false 
       setFormData((prev) => ({
         ...prev,
         ...initialData,
+        name: initialData.name || '',
+        username: initialData.username || (initialData.name ? initialData.name.toLowerCase().replace(/[^a-z0-9]/g, '') : ''),
+        phone: initialData.phone || '',
+        assignedLocation: initialData.assignedLocation || ALL_LOCATIONS_OPTION,
+        address: initialData.address || '',
         password: '', // keep blank on edit unless intentionally changing
       }));
     }
@@ -37,14 +45,14 @@ const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false 
   const calculateStrength = (pwd) => {
     if (!pwd) return { score: 0, text: '', color: '' };
     let score = 0;
+    if (pwd.length >= 6) score += 1;
     if (pwd.length >= 8) score += 1;
-    if (/[A-Z]/.test(pwd)) score += 1;
-    if (/[a-z]/.test(pwd)) score += 1;
+    if (/[A-Za-z]/.test(pwd)) score += 1;
     if (/[0-9]/.test(pwd)) score += 1;
     if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(pwd)) score += 1;
 
     if (score <= 2) return { score, text: 'Weak', color: 'var(--danger)' };
-    if (score <= 4) return { score, text: 'Moderate', color: '#f59e0b' };
+    if (score <= 3) return { score, text: 'Moderate', color: '#f59e0b' };
     return { score, text: 'Strong', color: 'var(--success)' };
   };
 
@@ -54,22 +62,15 @@ const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false 
   const validate = () => {
     const newErrors = {};
     if (!formData.name?.trim()) newErrors.name = 'Full name is required';
-    if (!formData.email?.trim() || !/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Valid email is required';
-    }
     
+    if (!formData.username?.trim() && !formData.phone?.trim()) {
+      newErrors.username = 'Either Username or Mobile Number is required for login';
+    }
+
     if (!isEdit || (isEdit && formData.password)) {
       const pwd = formData.password;
-      if (!pwd || pwd.length < 8) {
-        newErrors.password = 'Password must be at least 8 characters';
-      } else if (!/[A-Z]/.test(pwd)) {
-        newErrors.password = 'Must contain at least 1 uppercase letter (A-Z)';
-      } else if (!/[a-z]/.test(pwd)) {
-        newErrors.password = 'Must contain at least 1 lowercase letter (a-z)';
-      } else if (!/[0-9]/.test(pwd)) {
-        newErrors.password = 'Must contain at least 1 number (0-9)';
-      } else if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(pwd)) {
-        newErrors.password = 'Must contain at least 1 special character (!@#$%^&*)';
+      if (!pwd || pwd.length < 6) {
+        newErrors.password = 'Password must be at least 6 characters';
       }
     }
 
@@ -83,10 +84,17 @@ const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false 
     e.preventDefault();
     if (!validate()) return;
 
+    const cleanUsername = (formData.username || formData.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cleanPhone = (formData.phone || '').trim();
+
     const payload = {
-      name: formData.name,
-      email: formData.email,
+      name: formData.name.trim(),
+      username: cleanUsername,
+      phone: cleanPhone || null,
+      email: initialData.email || `${cleanUsername || cleanPhone}@sologix.local`,
       role: formData.role,
+      assignedLocation: formData.assignedLocation,
+      address: formData.address ? formData.address.trim() : null,
     };
     if (formData.password) {
       payload.password = formData.password;
@@ -133,35 +141,48 @@ const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false 
         <Input
           label="Full Name"
           name="name"
-          placeholder="e.g. Jane Doe"
+          placeholder="Enter person's name"
           value={formData.name}
           onChange={handleChange}
           error={errors.name}
           required
         />
 
-        <Input
-          label="Email Address"
-          name="email"
-          type="email"
-          placeholder="jane@inventory.com"
-          value={formData.email}
-          onChange={handleChange}
-          error={errors.email}
-          required
-        />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+          <Input
+            label="Username (Login ID)"
+            name="username"
+            type="text"
+            placeholder="e.g. palji, dilip, user1"
+            value={formData.username}
+            onChange={handleChange}
+            error={errors.username}
+            helperText="User can use this username to sign in"
+          />
+
+          <Input
+            label="Mobile Number"
+            name="phone"
+            type="tel"
+            placeholder="e.g. 9876543210"
+            value={formData.phone}
+            onChange={handleChange}
+            error={errors.phone}
+            helperText="User can also use this mobile number to sign in"
+          />
+        </div>
 
         <div>
           <Input
             label={isEdit ? 'New Password (leave blank to keep current)' : 'Password'}
             name="password"
             type="password"
-            placeholder="••••••••"
+            placeholder="Enter password"
             value={formData.password}
             onChange={handleChange}
             error={errors.password}
             required={!isEdit}
-            helperText="Requires min 8 chars, 1 uppercase, 1 lowercase, 1 number, and 1 symbol"
+            helperText="Minimum 6 characters"
           />
 
           {formData.password && (
@@ -184,18 +205,50 @@ const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false 
           )}
         </div>
 
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+          <Input
+            as="select"
+            label="System Role"
+            name="role"
+            value={formData.role}
+            onChange={handleChange}
+            error={errors.role}
+            required
+          >
+            <option value={ROLES.STAFF}>Staff (Location restricted)</option>
+            <option value={ROLES.ADMIN}>Admin (Full access to all godowns)</option>
+          </Input>
+
+          <Input
+            as="select"
+            label="Designated Godown / Location Access"
+            name="assignedLocation"
+            value={formData.assignedLocation}
+            onChange={handleChange}
+            error={errors.assignedLocation}
+            required
+            helperText={formData.role === ROLES.ADMIN ? 'Admins have access to all, but can set a home branch' : 'Staff will only see inventory & records for this place'}
+          >
+            <option value={ALL_LOCATIONS_OPTION}>All Locations (Full Access)</option>
+            {GODOWN_LOCATIONS.map((loc) => (
+              <option key={loc} value={loc}>
+                🏢 {loc} Godown
+              </option>
+            ))}
+          </Input>
+        </div>
+
         <Input
-          as="select"
-          label="System Role"
-          name="role"
-          value={formData.role}
+          as="textarea"
+          label="Person / Staff Address"
+          name="address"
+          placeholder="Enter physical address, branch office, or residential address..."
+          value={formData.address}
           onChange={handleChange}
-          error={errors.role}
-          required
-        >
-          <option value={ROLES.STAFF}>Staff (Manage inventory, transactions, reports)</option>
-          <option value={ROLES.ADMIN}>Admin (Full access + user management)</option>
-        </Input>
+          error={errors.address}
+          rows={2}
+          helperText="Admin can view & modify address to adjust place access at any time"
+        />
 
         <div className="form-actions">
           <Button type="submit" variant="primary" loading={loading}>

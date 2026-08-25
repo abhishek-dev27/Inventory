@@ -23,7 +23,9 @@ import {
   FiCopy,
   FiCheck,
   FiSearch,
+  FiPrinter,
 } from 'react-icons/fi';
+import { triggerPrint } from '../../utils/exportPdf';
 import toast from 'react-hot-toast';
 
 const ProductDetails = ({ product, isOpen, onClose }) => {
@@ -46,6 +48,9 @@ const ProductDetails = ({ product, isOpen, onClose }) => {
 
   const isModule = product.productType === 'Panels';
   const isMCB = product.productType === 'MCB';
+  const isACDB = product.productType === 'ACDB';
+  const isDCDB = product.productType === 'DCDB';
+  const isEarthing = product.productType === 'Earthing Material';
   const isConsumable = product.productType === 'Consumable';
   const isSpare = product.productType === 'Spare';
 
@@ -387,6 +392,202 @@ const ProductDetails = ({ product, isOpen, onClose }) => {
           </div>
         )}
 
+        {/* ACDB SPECIFICATIONS (Company, Rating, Phase, Enclosure) */}
+        {isACDB && (
+          <div
+            style={{
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              padding: '14px 16px',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: 'var(--primary-light)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                marginBottom: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <FiZap size={15} />
+              AC Distribution Box (ACDB) Specifications
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
+              <div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Brand / Make
+                </span>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                  🏢 {product.brand || 'Schneider Electric'}
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Rating / Capacity
+                </span>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--primary-light)', marginTop: '2px' }}>
+                  ⚡ {product.capacity || '1-Phase 1-5kW'}
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Electrical Phase
+                </span>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--success)', marginTop: '2px' }}>
+                  🔌 {product.phase || '1-Phase'}
+                </div>
+              </div>
+
+              {product.subType && (
+                <div>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                    Enclosure Protection
+                  </span>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    📦 {product.subType}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* DCDB SPECIFICATIONS (Company, Strings, Voltage, Enclosure) */}
+        {isDCDB && (
+          <div
+            style={{
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              padding: '14px 16px',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: 'var(--warning)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                marginBottom: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <FiSun size={15} />
+              DC Distribution Box (DCDB) Specifications
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
+              <div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Manufacturer / Brand
+                </span>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                  🏢 {product.brand || 'Hensel'}
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Array Strings Config
+                </span>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--warning)', marginTop: '2px' }}>
+                  ☀️ {product.capacity || '1 In 1 Out'}
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Voltage Rating
+                </span>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--primary-light)', marginTop: '2px' }}>
+                  ⚡ {product.phase || '1000V DC'}
+                </div>
+              </div>
+
+              {product.subType && (
+                <div>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                    Enclosure
+                  </span>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    📦 {product.subType}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* EARTHING MATERIAL SPECIFICATIONS (Classification, Spec/Dimension, Brand) */}
+        {isEarthing && (
+          <div
+            style={{
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              padding: '14px 16px',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: 'var(--success)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                marginBottom: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <FiZap size={15} />
+              Earthing & Lightning Protection Specifications
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+              <div style={{ gridColumn: 'span 2' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Earthing Item Type
+                </span>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                  🛡️ {product.subType || 'Chemical Earthing Rod / Electrode'}
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Size / Dimension / Weight
+                </span>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--success)', marginTop: '2px' }}>
+                  📏 {product.capacity || '14.2mm x 3m'}
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Brand / Make
+                </span>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                  🏢 {product.brand || 'Ashlok'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* SOLAR MODULE SPECIFICATIONS (Company, Capacity, DCR/NSCR) */}
         {isModule && (
           <div
@@ -654,6 +855,7 @@ const ProductDetails = ({ product, isOpen, onClose }) => {
 
         {/* Action Controls */}
         <div
+          className="no-print"
           style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -661,9 +863,11 @@ const ProductDetails = ({ product, isOpen, onClose }) => {
             borderTop: '1px solid var(--border)',
             paddingTop: '16px',
             marginTop: '8px',
+            flexWrap: 'wrap',
+            gap: '8px',
           }}
         >
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <Link to="/stock/in" state={{ selectedProduct: product }}>
               <Button size="sm" variant="success" icon={FiArrowDownLeft}>
                 Stock In
@@ -674,6 +878,9 @@ const ProductDetails = ({ product, isOpen, onClose }) => {
                 Stock Out
               </Button>
             </Link>
+            <Button size="sm" variant="secondary" icon={FiPrinter} onClick={triggerPrint}>
+              Print Details
+            </Button>
           </div>
 
           <div style={{ display: 'flex', gap: '8px' }}>

@@ -53,8 +53,26 @@ const Navbar = ({ onToggleSidebar }) => {
         </span>
       </div>
 
-      {/* Right items: Role badge & Avatar */}
+      {/* Right items: Godown indicator, Role badge & Avatar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '3px 10px',
+            borderRadius: 'var(--radius-full)',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            background: user?.role === 'admin' ? 'rgba(108, 92, 231, 0.12)' : 'rgba(0, 184, 148, 0.12)',
+            color: user?.role === 'admin' ? 'var(--primary-light)' : 'var(--success)',
+            border: `1px solid ${user?.role === 'admin' ? 'rgba(108, 92, 231, 0.25)' : 'rgba(0, 184, 148, 0.25)'}`,
+          }}
+          title={user?.role === 'admin' ? 'Admin has access to all godowns & locations' : `Designated access: ${user?.assignedLocation || 'Ranchi'}`}
+        >
+          🏢 {user?.role === 'admin' ? 'All Godowns' : (user?.assignedLocation || 'Ranchi')}
+        </span>
+
         <span
           className={`badge ${user?.role === 'admin' ? 'badge-primary' : 'badge-success'}`}
           style={{ textTransform: 'uppercase', fontSize: '0.72rem', padding: '3px 8px' }}

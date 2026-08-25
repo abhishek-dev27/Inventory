@@ -5,6 +5,16 @@ export const ROLES = {
   STAFF: 'staff',
 };
 
+export const GODOWN_LOCATIONS = [
+  'Ranchi',
+  'Jamshedpur',
+  'Hazaribagh',
+  'Patna',
+  'Daltonganj',
+];
+
+export const ALL_LOCATIONS_OPTION = 'All Locations';
+
 export const STOCK_TYPES = {
   IN: 'in',
   OUT: 'out',
@@ -37,6 +47,9 @@ export const PRODUCT_TYPES = [
   'Hybrid Inverter',
   'Panels',
   'Battery',
+  'ACDB',
+  'DCDB',
+  'Earthing Material',
   'MSB',
   'MCB',
   'Wires',
@@ -46,18 +59,147 @@ export const PRODUCT_TYPES = [
   'Other',
 ];
 
+export const TYPE_ICONS = {
+  'Ongrid Inverter': '⚡',
+  'Hybrid Inverter': '🔋',
+  'Panels': '☀️',
+  'Battery': '🔋',
+  'ACDB': '⚡',
+  'DCDB': '☀️',
+  'Earthing Material': '🛡️',
+  'MSB': '🔌',
+  'MCB': '⚡',
+  'Wires': '🧵',
+  'Structure': '🏗️',
+  'Consumable': '🔩',
+  'Spare': '🛠️',
+  'Other': '📦',
+};
+
 export const CATEGORIES = [
   'Inverters',
   'Solar Panels & Modules',
+  'ACDB & Distribution Boxes',
+  'DCDB & Array Junction Boxes',
+  'Earthing & Lightning Protection',
+  'Batteries & Energy Storage',
   'Electrical Switchgear & MSB',
   'Circuit Breakers & MCB',
   'Cables & Wiring',
   'Mounting Structure & Hardware',
   'Installation Consumables',
   'Maintenance Spares & Components',
-  'Batteries & Energy Storage',
   'Monitoring & Sensors',
   'Safety & Protection Equipment',
+  'Other',
+];
+
+// ACDB (AC Distribution Box) Constants
+export const ACDB_BRANDS = [
+  'Schneider Electric',
+  'L&T',
+  'Hensel',
+  'Havells',
+  'Elmex',
+  'Standard',
+  'Custom Assembly',
+  'Other',
+];
+
+export const ACDB_CAPACITIES = [
+  '1-Phase 1kW - 5kW (32A)',
+  '3-Phase 5kW - 10kW (32A)',
+  '3-Phase 15kW - 25kW (63A)',
+  '3-Phase 30kW - 50kW (100A)',
+  '3-Phase 60kW - 100kW (160A)',
+  'Other Rating',
+];
+
+export const ACDB_PHASES = [
+  '1-Phase (Single Phase AC)',
+  '3-Phase (Three Phase AC)',
+];
+
+export const ACDB_ENCLOSURES = [
+  'IP65 Weatherproof Polycarbonate',
+  'FRP Weatherproof Enclosure',
+  'Powder Coated CRCA Sheet Metal',
+  'IP67 Outdoor Enclosure',
+];
+
+// DCDB (DC Distribution Box / Solar Array Junction Box) Constants
+export const DCDB_BRANDS = [
+  'Hensel',
+  'Elmex',
+  'Schneider Electric',
+  'Suntree',
+  'L&T',
+  'Standard',
+  'Custom Assembly',
+  'Other',
+];
+
+export const DCDB_STRINGS = [
+  '1 In 1 Out (1 String)',
+  '2 In 2 Out (2 String)',
+  '3 In 3 Out (3 String)',
+  '4 In 4 Out (4 String)',
+  '6 In 6 Out (6 String)',
+  '8 In 8 Out (8 String)',
+  'Other String Config',
+];
+
+export const DCDB_VOLTAGES = [
+  '600V DC',
+  '1000V DC (1 kV)',
+  '1500V DC (1.5 kV)',
+];
+
+export const DCDB_ENCLOSURES = [
+  'IP65 UV Resistant Polycarbonate',
+  'FRP Weatherproof Enclosure',
+  'IP67 Heavy-Duty Box',
+];
+
+// Earthing Material & Lightning Protection Constants
+export const EARTHING_TYPES = [
+  'Copper Bonded Chemical Earthing Rod / Electrode',
+  'GI Pipe Chemical Earthing Electrode',
+  'Conductive Earth Backfill Chemical (BFC / Compound)',
+  'GI Earthing Strip / Flat',
+  'Copper Earthing Strip / Tape',
+  'Heavy Duty HDPE Earth Pit Chamber / Cover',
+  'Lightning Arrester (LA - Copper Multi-Spike / ESE)',
+  'Earthing Wire, Clamp & Accessories',
+  'Other Earthing Material',
+];
+
+export const EARTHING_SPECS = [
+  '14.2mm x 2 Meter (Copper Bonded)',
+  '14.2mm x 3 Meter (Copper Bonded)',
+  '17.2mm x 3 Meter (Copper Bonded)',
+  '50mm x 2 Meter (GI Electrode)',
+  '50mm x 3 Meter (GI Electrode)',
+  '25 kg Bag (Backfill Chemical BFC)',
+  '10 kg Bag (Backfill Chemical BFC)',
+  '25x3 mm (GI Strip)',
+  '25x6 mm (GI Strip)',
+  '32x6 mm (GI Strip)',
+  'Heavy Duty Round Pit Chamber (10-inch)',
+  'Heavy Duty Square Pit Chamber',
+  'Conventional Copper Multi-Spike (1m LA)',
+  'ESE Early Streamer Lightning Arrester',
+  'Other Size / Specification',
+];
+
+export const EARTHING_BRANDS = [
+  'Ashlok',
+  'True Power',
+  'Capex',
+  'LPI',
+  'Erico / nVent',
+  'Standard / ISI Mark',
+  'Custom Make',
   'Other',
 ];
 

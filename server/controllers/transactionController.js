@@ -39,6 +39,7 @@ const getTransactions = async (req, res, next) => {
       limit = 25,
       type,
       productId,
+      productType,
       search,
       startDate,
       endDate,
@@ -69,6 +70,38 @@ const getTransactions = async (req, res, next) => {
       ];
     }
 
+    // Godown / Location Access Control
+    const user = req.user;
+    const isStaffRestricted = user && user.role !== 'admin' && user.assignedLocation && user.assignedLocation !== 'All Locations';
+    if (isStaffRestricted) {
+      where.place = { [Op.like]: `%${user.assignedLocation}%` };
+    } else if (req.query.location && req.query.location !== 'All Locations' && req.query.location !== 'all') {
+      where.place = { [Op.like]: `%${req.query.location}%` };
+    }
+
+    const productWhere = {};
+    if (productType) {
+      if (productType === 'Ongrid Inverter') {
+        productWhere.productType = { [Op.or]: ['Ongrid Inverter', 'Inverters', 'Inverter'] };
+      } else if (productType === 'Hybrid Inverter') {
+        productWhere.productType = { [Op.or]: ['Hybrid Inverter', 'Inverters', 'Hybrid'] };
+      } else if (productType === 'Panels') {
+        productWhere.productType = { [Op.or]: ['Panels', 'Solar Panels', 'Solar Panels & Modules', 'Panel'] };
+      } else if (productType === 'Battery') {
+        productWhere.productType = { [Op.or]: ['Battery', 'Batteries', 'Batteries & Energy Storage'] };
+      } else if (productType === 'Structure') {
+        productWhere.productType = { [Op.or]: ['Structure', 'Structures', 'Mounting Structure & Hardware'] };
+      } else if (productType === 'Wires') {
+        productWhere.productType = { [Op.or]: ['Wires', 'Cables & Wiring', 'Wire', 'Cable'] };
+      } else if (productType === 'Consumable') {
+        productWhere.productType = { [Op.or]: ['Consumable', 'Consumables', 'Installation Consumables'] };
+      } else if (productType === 'Spare') {
+        productWhere.productType = { [Op.or]: ['Spare', 'Spares', 'Maintenance Spares & Components'] };
+      } else {
+        productWhere.productType = productType;
+      }
+    }
+
     const { count, rows: transactions } = await StockTransaction.findAndCountAll({
       where,
       include: [
@@ -76,6 +109,7 @@ const getTransactions = async (req, res, next) => {
           model: Product,
           as: 'product',
           attributes: productAttributes,
+          ...(Object.keys(productWhere).length ? { where: productWhere, required: true } : {}),
         },
         { model: User, as: 'user', attributes: ['id', 'name', 'email'] },
       ],

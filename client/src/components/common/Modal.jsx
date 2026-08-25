@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { FiX } from 'react-icons/fi';
 
 const Modal = ({
@@ -28,28 +29,31 @@ const Modal = ({
 
   if (!isOpen) return null;
 
-  return (
+  const modalElement = (
     <div
+      className="modal-overlay"
       style={{
         position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: 'rgba(0, 0, 0, 0.45)',
         backdropFilter: 'blur(4px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 9999,
+        zIndex: 999999,
         padding: '20px',
-        animation: 'fadeIn 0.2s ease',
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
+        className="modal-container"
         style={{
           background: 'var(--surface)',
           border: '1px solid var(--border-hover)',
@@ -59,19 +63,24 @@ const Modal = ({
           maxHeight: '90vh',
           overflowY: 'auto',
           boxShadow: 'var(--shadow-lg)',
-          animation: 'scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
           display: 'flex',
           flexDirection: 'column',
+          position: 'relative',
         }}
       >
         {/* Header */}
         <div
+          className="modal-header"
           style={{
             padding: '20px 24px',
             borderBottom: '1px solid var(--border)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            position: 'sticky',
+            top: 0,
+            background: 'var(--surface)',
+            zIndex: 10,
           }}
         >
           <div>
@@ -98,6 +107,7 @@ const Modal = ({
           </div>
           {showClose && (
             <button
+              className="modal-close-btn no-print"
               onClick={onClose}
               style={{
                 background: 'transparent',
@@ -126,10 +136,12 @@ const Modal = ({
         </div>
 
         {/* Content */}
-        <div style={{ padding: '24px' }}>{children}</div>
+        <div className="modal-body" style={{ padding: '24px' }}>{children}</div>
       </div>
     </div>
   );
+
+  return createPortal(modalElement, document.body);
 };
 
 export default Modal;
