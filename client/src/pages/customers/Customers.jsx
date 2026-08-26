@@ -28,6 +28,7 @@ import Input from '../../components/common/Input';
 import Modal from '../../components/common/Modal';
 import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/common/EmptyState';
+import CustomerImportModal from '../../components/customers/CustomerImportModal';
 import { customerService } from '../../services/customerService';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDate, formatDateTime, getFinancialYear, getFinancialYearsList } from '../../utils/formatDate';
@@ -1592,53 +1593,25 @@ const Customers = () => {
         </Modal>
       )}
 
-      {/* ===================== MODAL: BULK IMPORT FROM GOOGLE SHEET ===================== */}
-      <Modal
+      {/* ===================== MODAL: BULK IMPORT FROM EXCEL & GOOGLE SHEET ===================== */}
+      <CustomerImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
-        title="Import BD Updates from Google Sheets / CSV"
-        subtitle="Copy rows directly from your Google Sheet or paste CSV data below"
-        maxWidth="750px"
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div
-            style={{
-              padding: '12px 14px',
-              borderRadius: '10px',
-              backgroundColor: 'rgba(108, 92, 231, 0.08)',
-              border: '1px solid rgba(108, 92, 231, 0.2)',
-              fontSize: '0.8125rem',
-              color: 'var(--text-secondary)',
-            }}
-          >
-            <strong>💡 How to import:</strong>
-            <ol style={{ margin: '6px 0 0', paddingLeft: '18px' }}>
-              <li>Open your Google Sheet (e.g. <em>BD UPDATES</em>).</li>
-              <li>Select your data rows (Columns A to R) and copy (<kbd>Ctrl+C</kbd> / <kbd>Cmd+C</kbd>).</li>
-              <li>Paste (<kbd>Ctrl+V</kbd>) into the text box below and click <strong>Import Rows</strong>.</li>
-            </ol>
-          </div>
-
-          <Input
-            as="textarea"
-            label="Pasted Table / CSV Content"
-            placeholder="Customer Name	Address	Contact No.	System Type	Capacity	Date of Visit	Time of Visit	Reference	BDE Email	BDE Name	Comments	Unique ID	Booking Confirmed	Booking Amount	Mode of Payment	Project Value	Add-on 1	Add-on 2..."
-            value={pasteData}
-            onChange={(e) => setPasteData(e.target.value)}
-            rows={10}
-            style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}
-          />
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-            <Button variant="secondary" onClick={() => setIsImportModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" icon={FiUpload} onClick={handleBulkImport} loading={importing}>
-              Import Rows to Database
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        onImport={async (items) => {
+          setImporting(true);
+          try {
+            const res = await customerService.bulkImport(items);
+            toast.success(res.message || `Successfully imported ${items.length} customers`);
+            setIsImportModalOpen(false);
+            fetchCustomers();
+          } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to import customers');
+          } finally {
+            setImporting(false);
+          }
+        }}
+        loading={importing}
+      />
 
       {/* ===================== MODAL: DELETE CONFIRMATION ===================== */}
       <Modal
