@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  FiDollarSign,
   FiTrendingUp,
   FiCheckCircle,
   FiAlertCircle,
@@ -19,6 +18,7 @@ import {
   FiActivity,
   FiRepeat,
 } from 'react-icons/fi';
+import { LuIndianRupee } from 'react-icons/lu';
 import { accountService } from '../../services/accountService';
 import { customerService } from '../../services/customerService';
 import { useAuth } from '../../hooks/useAuth';
@@ -1488,7 +1488,7 @@ const Accounts = () => {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <FiDollarSign size={16} color="var(--primary-light)" />
+              <LuIndianRupee size={16} color="var(--primary-light)" />
               <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700 }}>
                 1. Customer Particulars & Commercials
               </h4>

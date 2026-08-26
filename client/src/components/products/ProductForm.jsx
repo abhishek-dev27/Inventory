@@ -41,7 +41,6 @@ import {
   FiHash,
   FiTag,
   FiBox,
-  FiDollarSign,
   FiZap,
   FiLayers,
   FiCamera,
@@ -58,6 +57,7 @@ import {
   FiSliders,
   FiPackage,
 } from 'react-icons/fi';
+import { LuIndianRupee } from 'react-icons/lu';
 import toast from 'react-hot-toast';
 
 const ProductForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false }) => {

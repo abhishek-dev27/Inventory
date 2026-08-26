@@ -14,7 +14,6 @@ import {
   FiCalendar,
   FiClock,
   FiZap,
-  FiDollarSign,
   FiCheckCircle,
   FiAlertCircle,
   FiUser,
@@ -23,6 +22,7 @@ import {
   FiRefreshCw,
   FiTrendingUp,
 } from 'react-icons/fi';
+import { LuIndianRupee } from 'react-icons/lu';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Modal from '../../components/common/Modal';
@@ -656,7 +656,7 @@ const Customers = () => {
               color: '#d97706',
             }}
           >
-            <FiDollarSign size={22} />
+            <LuIndianRupee size={22} />
           </div>
           <div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
@@ -1360,7 +1360,7 @@ const Customers = () => {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <FiDollarSign size={16} color="var(--success)" />
+              <LuIndianRupee size={16} color="var(--success)" />
               <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700 }}>
                 4. Commercials & Booking Details
               </h4>

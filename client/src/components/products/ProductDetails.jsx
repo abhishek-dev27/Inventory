@@ -12,7 +12,6 @@ import {
   FiLayers,
   FiMapPin,
   FiHash,
-  FiDollarSign,
   FiCpu,
   FiSun,
   FiTool,
@@ -25,6 +24,7 @@ import {
   FiSearch,
   FiPrinter,
 } from 'react-icons/fi';
+import { LuIndianRupee } from 'react-icons/lu';
 import { triggerPrint } from '../../utils/exportPdf';
 import toast from 'react-hot-toast';
 

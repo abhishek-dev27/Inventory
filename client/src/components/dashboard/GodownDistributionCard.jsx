@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiMapPin, FiBox, FiLayers, FiDollarSign, FiArrowRight, FiShield, FiTrendingUp, FiPlus } from 'react-icons/fi';
+import { FiMapPin, FiBox, FiLayers, FiArrowRight, FiShield, FiTrendingUp, FiPlus } from 'react-icons/fi';
+import { LuIndianRupee } from 'react-icons/lu';
 import { formatCurrency, CURRENCY_SYMBOL } from '../../utils/formatCurrency';
 import GodownModal from '../godowns/GodownModal';
 

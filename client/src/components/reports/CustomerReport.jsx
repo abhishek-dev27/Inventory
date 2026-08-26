@@ -5,7 +5,6 @@ import {
   FiMapPin,
   FiFileText,
   FiCalendar,
-  FiDollarSign,
   FiPackage,
   FiDownload,
   FiPrinter,

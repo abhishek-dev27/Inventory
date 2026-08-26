@@ -8,7 +8,6 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import {
-  FiDollarSign,
   FiCreditCard,
   FiAlertCircle,
   FiAlertTriangle,
@@ -23,8 +22,8 @@ import {
   FiZap,
   FiMail,
   FiInfo,
-  FiActivity,
 } from 'react-icons/fi';
+import { LuIndianRupee } from 'react-icons/lu';
 import { accountService } from '../../services/accountService';
 import { customerService } from '../../services/customerService';
 import { formatCurrency } from '../../utils/formatCurrency';
