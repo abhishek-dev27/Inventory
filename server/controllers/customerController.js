@@ -1,8 +1,58 @@
 const { Op } = require('sequelize');
 const Customer = require('../models/Customer');
+const Account = require('../models/Account');
 const User = require('../models/User');
 const ActivityLog = require('../models/ActivityLog');
 const { recordActivity } = require('../utils/clientInfo');
+
+// Auto-sync customer to Account ledger
+const syncCustomerToAccount = async (customer, userId = null) => {
+  try {
+    const pVal = parseFloat(customer.projectValue) || 0;
+    const bAmt = parseFloat(customer.bookingAmount) || 0;
+    const rem = Math.max(0, pVal - bAmt);
+
+    let acc = await Account.findOne({
+      where: {
+        [Op.or]: [
+          { customerId: customer.id },
+          { uniqueId: customer.uniqueId },
+        ],
+      },
+    });
+
+    if (acc) {
+      await acc.update({
+        customerName: customer.customerName,
+        contactNo: customer.contactNo,
+        address: customer.address,
+        bookingAmount: bAmt,
+        modeOfPayment: customer.modeOfPayment || acc.modeOfPayment,
+        projectValue: pVal,
+        remainingAmount: rem,
+        financialYear: customer.financialYear,
+      });
+    } else {
+      await Account.create({
+        uniqueId: customer.uniqueId || `ACC/${customer.financialYear || '2026-27'}/${String(customer.id).padStart(4, '0')}`,
+        customerName: customer.customerName,
+        contactNo: customer.contactNo,
+        address: customer.address,
+        bookingAmount: bAmt,
+        modeOfPayment: customer.modeOfPayment || 'UPI',
+        projectValue: pVal,
+        statusOfWork: customer.bookingConfirmed === 'Confirmed' ? 'Material Dispatched' : 'Not Started',
+        completionPercentage: customer.bookingConfirmed === 'Confirmed' ? 20 : 0,
+        remainingAmount: rem,
+        financialYear: customer.financialYear || '2026-27',
+        customerId: customer.id,
+        userId: userId || customer.userId,
+      });
+    }
+  } catch (err) {
+    console.error('Error auto-syncing customer to account:', err.message);
+  }
+};
 
 // Helper to normalize booking confirmation status from any input format
 const normalizeBookingStatus = (val) => {
@@ -286,6 +336,9 @@ const createCustomer = async (req, res) => {
       userId: req.user?.id || null,
     });
 
+    // Auto-sync customer into Account ledger
+    await syncCustomerToAccount(customer, req.user?.id);
+
     // Log activity safely
     await recordActivity(req, {
       userId: req.user?.id || null,
@@ -381,6 +434,9 @@ const updateCustomer = async (req, res) => {
       addOn3: addOn3 !== undefined ? addOn3.trim() : customer.addOn3,
       financialYear: updatedFy,
     });
+
+    // Auto-sync customer changes into Account ledger
+    await syncCustomerToAccount(customer, req.user?.id);
 
     // Log activity safely
     await recordActivity(req, {
@@ -518,6 +574,8 @@ const bulkImportCustomers = async (req, res) => {
         });
 
         created.push(newCust);
+        // Auto-sync customer to accounts ledger
+        await syncCustomerToAccount(newCust, req.user?.id);
       } catch (err) {
         errors.push({ row: i + 1, error: err.message });
       }

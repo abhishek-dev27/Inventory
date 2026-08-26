@@ -536,7 +536,7 @@ const Customers = () => {
             Export CSV
           </Button>
           <Button variant="primary" icon={FiPlus} onClick={handleOpenAdd}>
-            + Add Customer
+            Add Customer
           </Button>
         </div>
       </div>

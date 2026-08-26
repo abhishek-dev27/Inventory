@@ -653,7 +653,7 @@ const Accounts = () => {
             icon={FiPlus}
             onClick={handleOpenAdd}
           >
-            + Add Account
+            Add Account
           </Button>
         </div>
       </div>
