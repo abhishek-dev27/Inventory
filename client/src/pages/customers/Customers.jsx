@@ -333,7 +333,57 @@ const Customers = () => {
     toast.success('Customer data exported as CSV');
   };
 
-  // Bulk Import Parser
+  // Quote-aware CSV & TSV parser that preserves newlines inside quoted cells
+  const parseSpreadsheetText = (rawText) => {
+    const rows = [];
+    let currentRow = [];
+    let currentCell = '';
+    let inQuotes = false;
+
+    // Auto-detect delimiter based on first line
+    const firstLine = rawText.split(/\r?\n/)[0] || '';
+    const delimiter = firstLine.includes('\t') ? '\t' : ',';
+
+    for (let i = 0; i < rawText.length; i++) {
+      const char = rawText[i];
+      const nextChar = rawText[i + 1];
+
+      if (char === '"' || char === "'") {
+        if (inQuotes && nextChar === char) {
+          currentCell += char;
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === delimiter && !inQuotes) {
+        currentRow.push(currentCell.trim());
+        currentCell = '';
+      } else if ((char === '\r' || char === '\n') && !inQuotes) {
+        if (char === '\r' && nextChar === '\n') {
+          i++;
+        }
+        currentRow.push(currentCell.trim());
+        if (currentRow.some((c) => c.length > 0)) {
+          rows.push(currentRow);
+        }
+        currentRow = [];
+        currentCell = '';
+      } else {
+        currentCell += char;
+      }
+    }
+
+    if (currentCell.length > 0 || currentRow.length > 0) {
+      currentRow.push(currentCell.trim());
+      if (currentRow.some((c) => c.length > 0)) {
+        rows.push(currentRow);
+      }
+    }
+
+    return rows;
+  };
+
+  // Bulk Import Parser with Quote & Data Integrity Protection
   const handleBulkImport = async () => {
     if (!pasteData.trim()) {
       toast.error('Please paste table or CSV data from Google Sheet');
@@ -342,40 +392,53 @@ const Customers = () => {
 
     try {
       setImporting(true);
-      const lines = pasteData.trim().split('\n');
+      const matrix = parseSpreadsheetText(pasteData.trim());
       const items = [];
 
-      lines.forEach((line) => {
-        // Detect tab-separated or comma-separated
-        const separator = line.includes('\t') ? '\t' : ',';
-        const cols = line.split(separator).map((c) => c.trim().replace(/^["']|["']$/g, ''));
+      matrix.forEach((cols) => {
+        const rawName = (cols[0] || '').trim();
+        if (!rawName) return;
 
         // Skip header if matches
-        if (cols[0] && cols[0].toLowerCase().includes('customer name')) return;
+        if (rawName.toLowerCase().includes('customer name') || rawName.toLowerCase().includes('client name')) return;
 
-        if (cols[0]) {
-          items.push({
-            customerName: cols[0] || '',
-            address: cols[1] || '',
-            contactNo: cols[2] || '',
-            systemType: cols[3] || 'On-Grid',
-            capacity: cols[4] || '',
-            dateOfVisit: cols[5] || null,
-            timeOfVisit: cols[6] || '',
-            reference: cols[7] || '',
-            bdeEmail: cols[8] || '',
-            bdeName: cols[9] || '',
-            comments: cols[10] || '',
-            uniqueId: cols[11] || '',
-            bookingConfirmed: cols[12] || 'Confirmed',
-            bookingAmount: parseFloat(cols[13]) || 0,
-            modeOfPayment: cols[14] || 'UPI',
-            projectValue: parseFloat(cols[15]) || 0,
-            addOn1: cols[16] || '',
-            addOn2: cols[17] || '',
-            addOn3: cols[18] || '',
-          });
+        // Skip dangling fragment lines
+        const hasOtherData = cols.slice(1).some((c) => (c || '').trim().length > 0);
+        if (!hasOtherData && (rawName.startsWith('Loan') || rawName.startsWith('Baad') || rawName.startsWith('To Final') || rawName.startsWith('Inka') || rawName.startsWith('But'))) {
+          return;
         }
+
+        const rawConfirmed = (cols[12] || '').trim().toLowerCase();
+        let normalizedConfirmed = 'Confirmed';
+        if (rawConfirmed === 'false' || rawConfirmed === 'no' || rawConfirmed === 'lost' || rawConfirmed === 'cancelled' || rawConfirmed === 'lost / cancelled' || rawConfirmed === '0') {
+          normalizedConfirmed = 'Lost / Cancelled';
+        } else if (rawConfirmed === 'in discussion' || rawConfirmed === 'discussion') {
+          normalizedConfirmed = 'In Discussion';
+        } else if (rawConfirmed === 'pending') {
+          normalizedConfirmed = 'Pending';
+        }
+
+        items.push({
+          customerName: rawName,
+          address: cols[1] || '',
+          contactNo: cols[2] || '',
+          systemType: cols[3] || 'On-Grid',
+          capacity: cols[4] || '',
+          dateOfVisit: cols[5] || null,
+          timeOfVisit: cols[6] || '',
+          reference: cols[7] || '',
+          bdeEmail: cols[8] || '',
+          bdeName: cols[9] || '',
+          comments: cols[10] || '',
+          uniqueId: cols[11] || '',
+          bookingConfirmed: normalizedConfirmed,
+          bookingAmount: parseFloat(String(cols[13] || '').replace(/[^0-9.-]/g, '')) || 0,
+          modeOfPayment: cols[14] || 'UPI',
+          projectValue: parseFloat(String(cols[15] || '').replace(/[^0-9.-]/g, '')) || 0,
+          addOn1: cols[16] || '',
+          addOn2: cols[17] || '',
+          addOn3: cols[18] || '',
+        });
       });
 
       if (items.length === 0) {
@@ -395,25 +458,29 @@ const Customers = () => {
     }
   };
 
-  // Helper for Status Badge
+  // Helper for Status Badge with automatic TRUE/FALSE conversion
   const renderStatusBadge = (status) => {
-    const s = (status || '').toLowerCase();
+    const s = String(status || '').toLowerCase().trim();
     let bg = 'rgba(245, 158, 11, 0.12)';
     let color = '#f59e0b';
     let icon = FiAlertCircle;
+    let label = status || 'Pending';
 
-    if (s === 'confirmed' || s === 'yes' || s === 'booked') {
+    if (s === 'confirmed' || s === 'true' || s === 'yes' || s === 'booked' || s === 'done' || s === '1') {
       bg = 'rgba(16, 185, 129, 0.12)';
       color = 'var(--success)';
       icon = FiCheckCircle;
-    } else if (s === 'lost / cancelled' || s === 'no' || s === 'cancelled' || s === 'lost') {
+      label = 'Confirmed';
+    } else if (s === 'lost / cancelled' || s === 'false' || s === 'no' || s === 'cancelled' || s === 'lost' || s === '0') {
       bg = 'rgba(239, 68, 68, 0.12)';
       color = 'var(--danger)';
       icon = FiXCircle;
-    } else if (s === 'in discussion') {
+      label = 'Lost / Cancelled';
+    } else if (s === 'in discussion' || s === 'discussion') {
       bg = 'rgba(108, 92, 231, 0.12)';
       color = 'var(--primary-light)';
       icon = FiTrendingUp;
+      label = 'In Discussion';
     }
 
     const IconComponent = icon;
@@ -434,7 +501,7 @@ const Customers = () => {
         }}
       >
         <IconComponent size={12} />
-        {status || 'Pending'}
+        {label}
       </span>
     );
   };

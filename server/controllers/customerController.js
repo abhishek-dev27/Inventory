@@ -4,6 +4,21 @@ const User = require('../models/User');
 const ActivityLog = require('../models/ActivityLog');
 const { recordActivity } = require('../utils/clientInfo');
 
+// Helper to normalize booking confirmation status from any input format
+const normalizeBookingStatus = (val) => {
+  const s = String(val || '').trim().toLowerCase();
+  if (s === 'true' || s === 'yes' || s === 'confirmed' || s === '1' || s === 'booked' || s === 'done') {
+    return 'Confirmed';
+  }
+  if (s === 'false' || s === 'no' || s === 'cancelled' || s === 'lost' || s === 'lost / cancelled') {
+    return 'Lost / Cancelled';
+  }
+  if (s === 'in discussion' || s === 'discussion' || s === 'negotiating') {
+    return 'In Discussion';
+  }
+  return val && String(val).trim() ? String(val).trim() : 'Pending';
+};
+
 // Helper to compute Financial Year from date
 const getFinancialYear = (dateInput) => {
   const d = dateInput ? new Date(dateInput) : new Date();
@@ -260,7 +275,7 @@ const createCustomer = async (req, res) => {
       bdeName: bdeName ? bdeName.trim() : (req.user?.name || ''),
       comments: comments ? comments.trim() : '',
       uniqueId: finalUniqueId,
-      bookingConfirmed: bookingConfirmed || 'Pending',
+      bookingConfirmed: normalizeBookingStatus(bookingConfirmed),
       bookingAmount: parseFloat(bookingAmount) || 0,
       modeOfPayment: modeOfPayment || 'UPI',
       projectValue: parseFloat(projectValue) || 0,
@@ -338,6 +353,7 @@ const updateCustomer = async (req, res) => {
       projectValue,
       addOn1,
       addOn2,
+      addOn3,
       financialYear,
     } = req.body;
 
@@ -356,7 +372,7 @@ const updateCustomer = async (req, res) => {
       bdeName: bdeName !== undefined ? bdeName.trim() : customer.bdeName,
       comments: comments !== undefined ? comments.trim() : customer.comments,
       uniqueId: uniqueId !== undefined ? uniqueId.trim() : customer.uniqueId,
-      bookingConfirmed: bookingConfirmed !== undefined ? bookingConfirmed : customer.bookingConfirmed,
+      bookingConfirmed: bookingConfirmed !== undefined ? normalizeBookingStatus(bookingConfirmed) : customer.bookingConfirmed,
       bookingAmount: bookingAmount !== undefined ? parseFloat(bookingAmount) : customer.bookingAmount,
       modeOfPayment: modeOfPayment !== undefined ? modeOfPayment : customer.modeOfPayment,
       projectValue: projectValue !== undefined ? parseFloat(projectValue) : customer.projectValue,
@@ -490,7 +506,7 @@ const bulkImportCustomers = async (req, res) => {
           bdeName: item.bdeName ? item.bdeName.trim() : (req.user?.name || ''),
           comments: item.comments ? item.comments.trim() : '',
           uniqueId: uid,
-          bookingConfirmed: item.bookingConfirmed || 'Pending',
+          bookingConfirmed: normalizeBookingStatus(item.bookingConfirmed),
           bookingAmount: parseFloat(item.bookingAmount) || 0,
           modeOfPayment: item.modeOfPayment || 'UPI',
           projectValue: parseFloat(item.projectValue) || 0,
