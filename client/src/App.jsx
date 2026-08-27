@@ -20,12 +20,15 @@ import UsageReports from './pages/reports/UsageReports';
 import CustomerReports from './pages/reports/CustomerReports';
 import Loader from './components/common/Loader';
 
-const ProtectedRoute = ({ children, adminOnly = false }) => {
-  const { user, loading } = useAuth();
+const ProtectedRoute = ({ children, adminOnly = false, requiredModule = null }) => {
+  const { user, loading, hasModuleAccess } = useAuth();
 
   if (loading) return <Loader fullScreen />;
   if (!user) return <Navigate to="/login" replace />;
   if (adminOnly && user.role !== 'admin') return <Navigate to="/" replace />;
+  if (requiredModule && hasModuleAccess && !hasModuleAccess(requiredModule)) {
+    return <Navigate to="/" replace />;
+  }
 
   return children;
 };
@@ -44,14 +47,70 @@ function App() {
         }
       >
         <Route index element={<Dashboard />} />
-        <Route path="customers" element={<Customers />} />
-        <Route path="accounts" element={<Accounts />} />
-        <Route path="products" element={<Products />} />
-        <Route path="products/add" element={<AddProduct />} />
-        <Route path="products/edit/:id" element={<EditProduct />} />
-        <Route path="stock/in" element={<StockIn />} />
-        <Route path="stock/out" element={<StockOut />} />
-        <Route path="stock/history" element={<StockHistory />} />
+        <Route
+          path="customers"
+          element={
+            <ProtectedRoute requiredModule="customers">
+              <Customers />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="accounts"
+          element={
+            <ProtectedRoute requiredModule="accounts">
+              <Accounts />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="products"
+          element={
+            <ProtectedRoute requiredModule="products">
+              <Products />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="products/add"
+          element={
+            <ProtectedRoute requiredModule="products">
+              <AddProduct />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="products/edit/:id"
+          element={
+            <ProtectedRoute requiredModule="products">
+              <EditProduct />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="stock/in"
+          element={
+            <ProtectedRoute requiredModule="stock_in">
+              <StockIn />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="stock/out"
+          element={
+            <ProtectedRoute requiredModule="stock_out">
+              <StockOut />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="stock/history"
+          element={
+            <ProtectedRoute requiredModule="stock_history">
+              <StockHistory />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="users"
           element={
@@ -68,11 +127,46 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="reports" element={<Reports />} />
-        <Route path="reports/daily" element={<DailyReports />} />
-        <Route path="reports/monthly" element={<MonthlyReports />} />
-        <Route path="reports/usage" element={<UsageReports />} />
-        <Route path="reports/customers" element={<CustomerReports />} />
+        <Route
+          path="reports"
+          element={
+            <ProtectedRoute requiredModule="reports">
+              <Reports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="reports/daily"
+          element={
+            <ProtectedRoute requiredModule="reports">
+              <DailyReports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="reports/monthly"
+          element={
+            <ProtectedRoute requiredModule="reports">
+              <MonthlyReports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="reports/usage"
+          element={
+            <ProtectedRoute requiredModule="reports">
+              <UsageReports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="reports/customers"
+          element={
+            <ProtectedRoute requiredModule="reports">
+              <CustomerReports />
+            </ProtectedRoute>
+          }
+        />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

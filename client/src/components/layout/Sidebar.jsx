@@ -19,7 +19,7 @@ import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 
 const Sidebar = ({ isOpen, isMobile, onClose }) => {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, hasModuleAccess } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -32,22 +32,28 @@ const Sidebar = ({ isOpen, isMobile, onClose }) => {
     }
   };
 
-  const navItems = [
-    { to: '/', label: 'Dashboard', icon: FiGrid, end: true },
-    { to: '/customers', label: 'Customers & BD', icon: FiUsers },
-    { to: '/accounts', label: 'Accounts & Billing', icon: FiCreditCard },
-    { to: '/products', label: 'Products', icon: FiBox },
-    { to: '/stock/in', label: 'Stock In', icon: FiArrowDownLeft },
-    { to: '/stock/out', label: 'Stock Out', icon: FiArrowUpRight },
-    { to: '/stock/history', label: 'Stock History', icon: FiClock },
+  const allNavItems = [
+    { to: '/', label: 'Dashboard', icon: FiGrid, end: true, module: 'dashboard' },
+    { to: '/customers', label: 'Customers & BD', icon: FiUsers, module: 'customers' },
+    { to: '/accounts', label: 'Accounts & Billing', icon: FiCreditCard, module: 'accounts' },
+    { to: '/products', label: 'Products', icon: FiBox, module: 'products' },
+    { to: '/stock/in', label: 'Stock In', icon: FiArrowDownLeft, module: 'stock_in' },
+    { to: '/stock/out', label: 'Stock Out', icon: FiArrowUpRight, module: 'stock_out' },
+    { to: '/stock/history', label: 'Stock History', icon: FiClock, module: 'stock_history' },
     ...(isAdmin
       ? [
-          { to: '/users', label: 'User Management', icon: FiUserCheck },
-          { to: '/activity-logs', label: 'Activity Logs', icon: FiShield },
+          { to: '/users', label: 'User Management', icon: FiUserCheck, module: 'users' },
+          { to: '/activity-logs', label: 'Activity Logs', icon: FiShield, module: 'activity_logs' },
         ]
       : []),
-    { to: '/reports', label: 'Reports & Analytics', icon: FiBarChart2 },
+    { to: '/reports', label: 'Reports & Analytics', icon: FiBarChart2, module: 'reports' },
   ];
+
+  const navItems = allNavItems.filter((item) => {
+    if (isAdmin) return true;
+    if (item.module === 'users' || item.module === 'activity_logs') return false;
+    return hasModuleAccess ? hasModuleAccess(item.module) : true;
+  });
 
   return (
     <>

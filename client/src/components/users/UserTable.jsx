@@ -23,6 +23,7 @@ const UserTable = ({ users = [], onEdit, onDelete, currentUserId }) => {
             <th>User & Username</th>
             <th>Mobile / Phone</th>
             <th>Role</th>
+            <th>Permitted Modules</th>
             <th>Designated Place / Godown</th>
             <th>Address</th>
             <th>Created</th>
@@ -36,6 +37,9 @@ const UserTable = ({ users = [], onEdit, onDelete, currentUserId }) => {
             const location = u.assignedLocation || 'All Locations';
             const isAllLocations = location === 'All Locations';
             const usernameDisplay = u.username ? `@${u.username}` : `@${(u.name || '').toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+
+            const allowed = Array.isArray(u.allowedModules) ? u.allowedModules : ['dashboard', 'products', 'stock_in', 'stock_out', 'stock_history'];
+            const hasCommercials = allowed.includes('customers') || allowed.includes('accounts') || allowed.includes('reports');
 
             return (
               <tr key={u.id}>
@@ -86,6 +90,47 @@ const UserTable = ({ users = [], onEdit, onDelete, currentUserId }) => {
                     {isAdmin ? <FiShield size={12} /> : <FiUser size={12} />}
                     {u.role}
                   </span>
+                </td>
+                <td>
+                  {isAdmin ? (
+                    <span className="badge badge-primary" style={{ fontSize: '0.72rem' }}>
+                      👑 Full Access
+                    </span>
+                  ) : !hasCommercials ? (
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                        color: 'var(--success)',
+                        border: '1px solid rgba(16, 185, 129, 0.25)',
+                      }}
+                    >
+                      📦 Inventory Only
+                    </span>
+                  ) : (
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                        color: 'var(--primary-light)',
+                        border: '1px solid rgba(59, 130, 246, 0.25)',
+                      }}
+                    >
+                      💼 Full Staff ({allowed.length} mods)
+                    </span>
+                  )}
                 </td>
                 <td>
                   <span

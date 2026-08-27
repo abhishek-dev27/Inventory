@@ -5,6 +5,35 @@ export const ROLES = {
   STAFF: 'staff',
 };
 
+export const SYSTEM_MODULES = [
+  { id: 'dashboard', label: 'Executive Dashboard', icon: 'FiGrid', description: 'Real-time overview, stock metrics & movements' },
+  { id: 'products', label: 'Products Catalog', icon: 'FiBox', description: 'Product list, SKU details, and low-stock alerts' },
+  { id: 'stock_in', label: 'Stock In (Inward)', icon: 'FiArrowDownLeft', description: 'Inward entry vouchers & serial tracking' },
+  { id: 'stock_out', label: 'Stock Out (Dispatch)', icon: 'FiArrowUpRight', description: 'Site dispatches & outward voucher generation' },
+  { id: 'stock_history', label: 'Stock History & Passbook', icon: 'FiClock', description: 'Transaction audit log & passbook vouchers' },
+  { id: 'customers', label: 'Customers & BD Tracker', icon: 'FiUsers', description: 'Lead pipeline, project capacities, and BD site visits' },
+  { id: 'accounts', label: 'Accounts & Financial Ledger', icon: 'FiCreditCard', description: '5-stage milestone payments & collection balances' },
+  { id: 'reports', label: 'Reports & Analytics', icon: 'FiBarChart2', description: 'Executive daily/monthly stock & commercial reports' },
+];
+
+export const MODULE_PRESETS = {
+  INVENTORY_ONLY: {
+    name: 'Warehouse / Inventory Staff',
+    description: 'Permitted strictly for Dashboard, Products, Stock In, Stock Out, and Stock History',
+    modules: ['dashboard', 'products', 'stock_in', 'stock_out', 'stock_history'],
+  },
+  FULL_STAFF: {
+    name: 'Full Staff Access',
+    description: 'Access to all operational modules including Customers, Accounts, and Reports',
+    modules: ['dashboard', 'products', 'stock_in', 'stock_out', 'stock_history', 'customers', 'accounts', 'reports'],
+  },
+  ADMIN: {
+    name: 'Full Administrator',
+    description: 'Complete unrestricted access to all modules, User Management, and Activity Logs',
+    modules: ['dashboard', 'products', 'stock_in', 'stock_out', 'stock_history', 'customers', 'accounts', 'reports', 'users', 'activity_logs'],
+  },
+};
+
 export const GODOWN_LOCATIONS = [
   'Ranchi',
   'Jamshedpur',

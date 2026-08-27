@@ -59,12 +59,22 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   }, []);
 
+  const hasModuleAccess = useCallback((moduleKey) => {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    const allowed = Array.isArray(user.allowedModules) && user.allowedModules.length > 0
+      ? user.allowedModules
+      : ['dashboard', 'products', 'stock_in', 'stock_out', 'stock_history'];
+    return allowed.includes(moduleKey);
+  }, [user]);
+
   const value = {
     user,
     loading,
     login,
     logout,
     isAdmin: user?.role === 'admin',
+    hasModuleAccess,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import GodownModal from '../godowns/GodownModal';
-import { ROLES, GODOWN_LOCATIONS, ALL_LOCATIONS_OPTION } from '../../utils/constants';
-import { FiPlus } from 'react-icons/fi';
+import { ROLES, GODOWN_LOCATIONS, ALL_LOCATIONS_OPTION, SYSTEM_MODULES, MODULE_PRESETS } from '../../utils/constants';
+import { FiPlus, FiCheck, FiShield, FiBox, FiGrid, FiArrowDownLeft, FiArrowUpRight, FiClock, FiUsers, FiCreditCard, FiBarChart2 } from 'react-icons/fi';
 
 const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false, godowns = [] }) => {
   const [godownList, setGodownList] = useState(godowns && godowns.length > 0 ? godowns : GODOWN_LOCATIONS);
   const [showGodownModal, setShowGodownModal] = useState(false);
+
+  const defaultStaffModules = MODULE_PRESETS.INVENTORY_ONLY.modules;
 
   const [formData, setFormData] = useState({
     name: '',
@@ -17,6 +19,7 @@ const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false,
     role: ROLES.STAFF,
     assignedLocation: ALL_LOCATIONS_OPTION,
     address: '',
+    allowedModules: defaultStaffModules,
     ...initialData,
   });
 
@@ -30,6 +33,10 @@ const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false,
 
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
+      const initialAllowed = initialData.allowedModules && Array.isArray(initialData.allowedModules) && initialData.allowedModules.length > 0
+        ? initialData.allowedModules
+        : (initialData.role === ROLES.ADMIN ? MODULE_PRESETS.ADMIN.modules : defaultStaffModules);
+
       setFormData((prev) => ({
         ...prev,
         ...initialData,
@@ -38,6 +45,7 @@ const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false,
         phone: initialData.phone || '',
         assignedLocation: initialData.assignedLocation || ALL_LOCATIONS_OPTION,
         address: initialData.address || '',
+        allowedModules: initialAllowed,
         password: '', // keep blank on edit unless intentionally changing
       }));
     }
@@ -45,9 +53,32 @@ const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false,
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === 'role') {
+      const newModules = value === ROLES.ADMIN ? MODULE_PRESETS.ADMIN.modules : defaultStaffModules;
+      setFormData((prev) => ({ ...prev, role: value, allowedModules: newModules }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handleToggleModule = (moduleId) => {
+    setFormData((prev) => {
+      const current = Array.isArray(prev.allowedModules) ? prev.allowedModules : defaultStaffModules;
+      if (current.includes(moduleId)) {
+        return { ...prev, allowedModules: current.filter((m) => m !== moduleId) };
+      } else {
+        return { ...prev, allowedModules: [...current, moduleId] };
+      }
+    });
+  };
+
+  const applyPreset = (presetKey) => {
+    const preset = MODULE_PRESETS[presetKey];
+    if (preset) {
+      setFormData((prev) => ({ ...prev, allowedModules: preset.modules }));
     }
   };
 
@@ -106,6 +137,7 @@ const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false,
       role: formData.role,
       assignedLocation: formData.assignedLocation,
       address: formData.address ? formData.address.trim() : null,
+      allowedModules: formData.role === ROLES.ADMIN ? MODULE_PRESETS.ADMIN.modules : formData.allowedModules,
     };
     if (formData.password) {
       payload.password = formData.password;
@@ -282,6 +314,118 @@ const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false,
                 : 'Staff will only see inventory & records for this place'}
             </p>
           </div>
+        </div>
+
+        {/* Permitted System Modules Section */}
+        <div
+          style={{
+            border: '1px solid var(--border)',
+            borderRadius: '12px',
+            padding: '16px',
+            backgroundColor: 'var(--surface-elevated)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <FiShield color="var(--primary-light)" /> Permitted System Modules & Features
+              </h4>
+              <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Select which screens and features this staff member is authorized to access
+              </p>
+            </div>
+
+            {formData.role !== ROLES.ADMIN && (
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => applyPreset('INVENTORY_ONLY')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    color: 'var(--success)',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  📦 Inventory Only
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset('FULL_STAFF')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    color: 'var(--primary-light)',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  💼 Full Staff Access
+                </button>
+              </div>
+            )}
+          </div>
+
+          {formData.role === ROLES.ADMIN ? (
+            <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: 'rgba(108, 92, 231, 0.1)', border: '1px solid rgba(108, 92, 231, 0.2)', fontSize: '0.82rem', color: 'var(--primary-light)', fontWeight: 600 }}>
+              👑 Administrators automatically have full unrestricted access to all modules, User Management, Godowns, and Activity Audit Logs.
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+              {SYSTEM_MODULES.map((mod) => {
+                const isChecked = Array.isArray(formData.allowedModules) && formData.allowedModules.includes(mod.id);
+                return (
+                  <label
+                    key={mod.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: `1px solid ${isChecked ? 'var(--primary-border)' : 'var(--border)'}`,
+                      backgroundColor: isChecked ? 'rgba(108, 92, 231, 0.08)' : 'var(--bg-secondary)',
+                      cursor: 'pointer',
+                      transition: 'all var(--transition-fast)',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => handleToggleModule(mod.id)}
+                      style={{ marginTop: '3px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 700, color: isChecked ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                        {mod.id === 'dashboard' && <FiGrid size={15} />}
+                        {mod.id === 'products' && <FiBox size={15} />}
+                        {mod.id === 'stock_in' && <FiArrowDownLeft size={15} />}
+                        {mod.id === 'stock_out' && <FiArrowUpRight size={15} />}
+                        {mod.id === 'stock_history' && <FiClock size={15} />}
+                        {mod.id === 'customers' && <FiUsers size={15} />}
+                        {mod.id === 'accounts' && <FiCreditCard size={15} />}
+                        {mod.id === 'reports' && <FiBarChart2 size={15} />}
+                        {mod.label}
+                      </div>
+                      <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: 1.2 }}>
+                        {mod.description}
+                      </p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <Input

@@ -50,6 +50,11 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(50),
     allowNull: true,
   },
+  allowedModules: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: ['dashboard', 'products', 'stock_in', 'stock_out', 'stock_history'],
+  },
   refreshToken: {
     type: DataTypes.STRING(500),
     allowNull: true,

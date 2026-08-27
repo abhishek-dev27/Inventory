@@ -74,7 +74,7 @@ const { validatePasswordStrength } = require('../utils/passwordValidator');
 // @access  Private/Admin
 const createUser = async (req, res, next) => {
   try {
-    const { name, username, phone, email, password, role, assignedLocation, address } = req.body;
+    const { name, username, phone, email, password, role, assignedLocation, address, allowedModules } = req.body;
 
     if (!name || !name.trim()) {
       res.status(400);
@@ -109,6 +109,9 @@ const createUser = async (req, res, next) => {
       }
     }
 
+    const defaultStaffModules = ['dashboard', 'products', 'stock_in', 'stock_out', 'stock_history'];
+    const allModules = ['dashboard', 'products', 'stock_in', 'stock_out', 'stock_history', 'customers', 'accounts', 'reports', 'users', 'activity_logs'];
+
     const user = await User.create({
       name: name.trim(),
       username: cleanUsername,
@@ -118,6 +121,9 @@ const createUser = async (req, res, next) => {
       role: role || 'staff',
       assignedLocation: assignedLocation || 'All Locations',
       address: address ? address.trim() : null,
+      allowedModules: (role === 'admin')
+        ? allModules
+        : (Array.isArray(allowedModules) && allowedModules.length > 0 ? allowedModules : defaultStaffModules),
     });
 
     res.status(201).json({
@@ -141,7 +147,7 @@ const updateUser = async (req, res, next) => {
       throw new Error('User not found');
     }
 
-    const { name, username, phone, email, password, role, assignedLocation, address, unlockAccount } = req.body;
+    const { name, username, phone, email, password, role, assignedLocation, address, allowedModules, unlockAccount } = req.body;
 
     if (name !== undefined) user.name = name.trim();
     if (username !== undefined) user.username = username ? username.trim().toLowerCase() : user.username;
@@ -150,6 +156,7 @@ const updateUser = async (req, res, next) => {
     if (role !== undefined) user.role = role;
     if (assignedLocation !== undefined) user.assignedLocation = assignedLocation;
     if (address !== undefined) user.address = address ? address.trim() : null;
+    if (allowedModules !== undefined) user.allowedModules = allowedModules;
 
     // Unlock account if requested by admin
     if (unlockAccount) {
