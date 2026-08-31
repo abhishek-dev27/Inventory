@@ -36,6 +36,17 @@ const initDatabase = async (syncTables = true) => {
   await connectDB();
 
   if (syncTables) {
+    try {
+      await sequelize.query('ALTER TABLE `users` ADD COLUMN `savedPassword` VARCHAR(255) NULL;');
+    } catch (e) {
+      // column may already exist
+    }
+    try {
+      await sequelize.query('ALTER TABLE `users` ADD COLUMN `passwordHistory` JSON NULL;');
+    } catch (e) {
+      // column may already exist
+    }
+
     await sequelize.sync();
     console.log('📦 Database tables synced successfully');
 

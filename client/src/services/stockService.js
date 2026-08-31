@@ -20,4 +20,9 @@ export const stockService = {
     const { data } = await api.get(`/transactions/${id}`);
     return data;
   },
+
+  updateTransaction: async (id, txData) => {
+    const { data } = await api.put(`/transactions/${id}`, txData);
+    return data;
+  },
 };

@@ -1,9 +1,48 @@
-import React from 'react';
-import { FiEdit2, FiTrash2, FiUser, FiShield, FiUsers, FiMapPin, FiPhone } from 'react-icons/fi';
+import React, { useState } from 'react';
+import {
+  FiEdit2,
+  FiTrash2,
+  FiUser,
+  FiShield,
+  FiUsers,
+  FiMapPin,
+  FiPhone,
+  FiEye,
+  FiEyeOff,
+  FiCopy,
+  FiCheck,
+  FiKey,
+  FiClock,
+} from 'react-icons/fi';
 import Button from '../common/Button';
+import StickyTableContainer from '../common/StickyTableContainer';
 import { formatDate } from '../../utils/formatDate';
+import toast from 'react-hot-toast';
 
-const UserTable = ({ users = [], onEdit, onDelete, currentUserId }) => {
+const UserTable = ({ users = [], onEdit, onDelete, onViewHistory, currentUserId }) => {
+  const [showPasswords, setShowPasswords] = useState({});
+  const [copiedId, setCopiedId] = useState(null);
+
+  const togglePassword = (userId) => {
+    setShowPasswords((prev) => ({
+      ...prev,
+      [userId]: !prev[userId],
+    }));
+  };
+
+  const copyToClipboard = (text, userId) => {
+    if (!text) {
+      toast.error('No saved password available for this user');
+      return;
+    }
+    navigator.clipboard.writeText(text);
+    setCopiedId(userId);
+    toast.success('Password copied to clipboard');
+    setTimeout(() => {
+      setCopiedId(null);
+    }, 2000);
+  };
+
   if (users.length === 0) {
     return (
       <div className="table-container">
@@ -16,13 +55,14 @@ const UserTable = ({ users = [], onEdit, onDelete, currentUserId }) => {
   }
 
   return (
-    <div className="table-container">
-      <table>
+    <StickyTableContainer>
+      <table style={{ width: '100%', minWidth: '1080px' }}>
         <thead>
           <tr>
             <th>User & Username</th>
             <th>Mobile / Phone</th>
             <th>Role</th>
+            <th>Saved Password & History</th>
             <th>Permitted Modules</th>
             <th>Designated Place / Godown</th>
             <th>Address</th>
@@ -90,6 +130,101 @@ const UserTable = ({ users = [], onEdit, onDelete, currentUserId }) => {
                     {isAdmin ? <FiShield size={12} /> : <FiUser size={12} />}
                     {u.role}
                   </span>
+                </td>
+                {/* Saved Password & History */}
+                <td>
+                  {(() => {
+                    const isRevealed = Boolean(showPasswords[u.id]);
+                    const isCopied = copiedId === u.id;
+                    const hasHistory = Array.isArray(u.passwordHistory) && u.passwordHistory.length > 0;
+                    const displayPwd = u.savedPassword || (isSelf ? '••••••' : null);
+
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <div
+                            style={{
+                              fontFamily: 'monospace',
+                              fontSize: '0.82rem',
+                              backgroundColor: 'var(--bg-secondary)',
+                              padding: '3px 8px',
+                              borderRadius: 'var(--radius-sm)',
+                              border: '1px solid var(--border)',
+                              letterSpacing: isRevealed ? '0' : '2px',
+                              color: isRevealed ? 'var(--primary-light)' : 'var(--text-muted)',
+                              fontWeight: isRevealed ? 700 : 900,
+                              minWidth: '80px',
+                            }}
+                          >
+                            {isRevealed ? (u.savedPassword || 'Not Recorded') : '••••••••'}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => togglePassword(u.id)}
+                            title={isRevealed ? 'Hide Password' : 'Show Saved Password'}
+                            style={{
+                              background: 'none',
+                              border: '1px solid var(--border)',
+                              borderRadius: 'var(--radius-sm)',
+                              padding: '4px 6px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              color: isRevealed ? 'var(--primary-light)' : 'var(--text-secondary)',
+                              backgroundColor: 'var(--surface)',
+                            }}
+                          >
+                            {isRevealed ? <FiEyeOff size={13} /> : <FiEye size={13} />}
+                          </button>
+
+                          {u.savedPassword && (
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(u.savedPassword, u.id)}
+                              title="Copy Password to Clipboard"
+                              style={{
+                                background: 'none',
+                                border: '1px solid var(--border)',
+                                borderRadius: 'var(--radius-sm)',
+                                padding: '4px 6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                color: isCopied ? 'var(--success)' : 'var(--text-secondary)',
+                                backgroundColor: 'var(--surface)',
+                              }}
+                            >
+                              {isCopied ? <FiCheck size={13} /> : <FiCopy size={13} />}
+                            </button>
+                          )}
+                        </div>
+
+                        {hasHistory && (
+                          <button
+                            type="button"
+                            onClick={() => onViewHistory && onViewHistory(u)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              fontSize: '0.72rem',
+                              color: 'var(--primary-light)',
+                              cursor: 'pointer',
+                              fontWeight: 600,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              textAlign: 'left',
+                              width: 'fit-content',
+                            }}
+                          >
+                            <FiClock size={11} /> {u.passwordHistory.length} {u.passwordHistory.length === 1 ? 'Entry' : 'Entries'} in History
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </td>
                 <td>
                   {isAdmin ? (
@@ -192,7 +327,7 @@ const UserTable = ({ users = [], onEdit, onDelete, currentUserId }) => {
           })}
         </tbody>
       </table>
-    </div>
+    </StickyTableContainer>
   );
 };
 

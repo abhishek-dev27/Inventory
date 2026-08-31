@@ -6,12 +6,14 @@ import {
   FiUser,
   FiMapPin,
   FiEye,
+  FiEdit2,
   FiZap,
 } from 'react-icons/fi';
 import { formatDateTime, formatRelative } from '../../utils/formatDate';
 import Button from '../common/Button';
+import StickyTableContainer from '../common/StickyTableContainer';
 
-const TransactionTable = ({ transactions = [], onInspect }) => {
+const TransactionTable = ({ transactions = [], onInspect, onEdit }) => {
   if (transactions.length === 0) {
     return (
       <div className="table-container">
@@ -24,19 +26,19 @@ const TransactionTable = ({ transactions = [], onInspect }) => {
   }
 
   return (
-    <div className="table-container">
-      <table className="transaction-table" style={{ width: '100%' }}>
+    <StickyTableContainer>
+      <table className="transaction-table" style={{ width: '100%', minWidth: '950px' }}>
         <thead>
           <tr>
-            <th style={{ width: '150px' }}>Date & Time</th>
+            <th style={{ width: '140px' }}>Date & Time</th>
             <th style={{ width: '110px' }}>Movement</th>
-            <th>Product & Unique ID</th>
-            <th style={{ width: '90px' }}>Quantity</th>
+            <th style={{ minWidth: '180px' }}>Product & Unique ID</th>
+            <th style={{ width: '100px' }}>Quantity</th>
             <th style={{ width: '160px' }}>Person (Party)</th>
-            <th style={{ width: '170px' }}>Place / Site</th>
+            <th style={{ width: '160px' }}>Place / Site</th>
             <th style={{ width: '140px' }}>Reason & Ref #</th>
             <th style={{ width: '120px' }}>Handled By</th>
-            <th className="no-print" style={{ textAlign: 'right', width: '80px', paddingRight: '20px' }}>Action</th>
+            <th className="no-print" style={{ textAlign: 'right', width: '150px', paddingRight: '20px' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -203,24 +205,35 @@ const TransactionTable = ({ transactions = [], onInspect }) => {
                   </span>
                 </td>
 
-                {/* Action / Voucher Button */}
+                {/* Action / Voucher Buttons */}
                 <td className="no-print" style={{ textAlign: 'right', paddingRight: '20px' }}>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    icon={FiEye}
-                    title="Inspect Voucher & Full Product Details"
-                    onClick={() => onInspect && onInspect(tx)}
-                  >
-                    Details
-                  </Button>
+                  <div style={{ display: 'inline-flex', gap: '6px', justifyContent: 'flex-end' }}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon={FiEye}
+                      title="Inspect Voucher & Details"
+                      onClick={() => onInspect && onInspect(tx)}
+                    >
+                      Details
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      icon={FiEdit2}
+                      title="Edit Stock Entry"
+                      onClick={() => onEdit && onEdit(tx)}
+                    >
+                      Edit
+                    </Button>
+                  </div>
                 </td>
               </tr>
             );
           })}
         </tbody>
       </table>
-    </div>
+    </StickyTableContainer>
   );
 };
 

@@ -86,7 +86,7 @@ const StockTransaction = sequelize.define('StockTransaction', {
 }, {
   tableName: 'stock_transactions',
   timestamps: true,
-  updatedAt: false, // Transactions are immutable
+  updatedAt: false,
 });
 
 module.exports = StockTransaction;

@@ -246,6 +246,15 @@ const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false,
               </div>
             </div>
           )}
+
+          {isEdit && initialData?.savedPassword && (
+            <div style={{ marginTop: '6px', fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>Previously saved password:</span>
+              <strong style={{ fontFamily: 'monospace', color: 'var(--primary-light)', backgroundColor: 'var(--bg-secondary)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                {initialData.savedPassword}
+              </strong>
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>

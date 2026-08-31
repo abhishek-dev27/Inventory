@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiPlus, FiUsers, FiSearch, FiMapPin } from 'react-icons/fi';
+import { FiPlus, FiUsers, FiSearch, FiMapPin, FiKey, FiClock, FiCopy, FiCheck } from 'react-icons/fi';
 import UserTable from '../../components/users/UserTable';
 import UserForm from '../../components/users/UserForm';
 import GodownModal from '../../components/godowns/GodownModal';
@@ -12,6 +12,7 @@ import { userService } from '../../services/userService';
 import { godownService } from '../../services/godownService';
 import { useAuth } from '../../hooks/useAuth';
 import { GODOWN_LOCATIONS } from '../../utils/constants';
+import { formatDateTime } from '../../utils/formatDate';
 import toast from 'react-hot-toast';
 
 const UserManagement = () => {
@@ -24,6 +25,8 @@ const UserManagement = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [godownModalOpen, setGodownModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [historyUser, setHistoryUser] = useState(null);
+  const [copiedPwdIdx, setCopiedPwdIdx] = useState(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -195,6 +198,7 @@ const UserManagement = () => {
           users={users}
           onEdit={handleOpenEditModal}
           onDelete={(u) => setDeleteCandidate(u)}
+          onViewHistory={(u) => setHistoryUser(u)}
           currentUserId={currentUser?.id}
         />
       )}
@@ -214,6 +218,132 @@ const UserManagement = () => {
           isEdit={Boolean(editingUser)}
           godowns={godowns}
         />
+      </Modal>
+
+      {/* Password History Modal */}
+      <Modal
+        isOpen={Boolean(historyUser)}
+        onClose={() => {
+          setHistoryUser(null);
+          setCopiedPwdIdx(null);
+        }}
+        title={`Password History: ${historyUser?.name || 'User'}`}
+        subtitle={`Audit log of current and previously saved passwords for @${historyUser?.username || historyUser?.email}`}
+        maxWidth="520px"
+      >
+        {historyUser && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div
+              style={{
+                padding: '12px 14px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(108, 92, 231, 0.08)',
+                border: '1px solid rgba(108, 92, 231, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Active Saved Password
+                </span>
+                <div style={{ fontFamily: 'monospace', fontSize: '1rem', fontWeight: 800, color: 'var(--primary-light)', marginTop: '2px' }}>
+                  {historyUser.savedPassword || 'Not available'}
+                </div>
+              </div>
+              {historyUser.savedPassword && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon={copiedPwdIdx === 'current' ? FiCheck : FiCopy}
+                  onClick={() => {
+                    navigator.clipboard.writeText(historyUser.savedPassword);
+                    setCopiedPwdIdx('current');
+                    toast.success('Current password copied');
+                    setTimeout(() => setCopiedPwdIdx(null), 2000);
+                  }}
+                >
+                  {copiedPwdIdx === 'current' ? 'Copied' : 'Copy'}
+                </Button>
+              )}
+            </div>
+
+            <div>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <FiClock color="var(--primary-light)" /> Historical Password Changes ({Array.isArray(historyUser.passwordHistory) ? historyUser.passwordHistory.length : 0})
+              </h4>
+
+              {Array.isArray(historyUser.passwordHistory) && historyUser.passwordHistory.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto' }}>
+                  {[...historyUser.passwordHistory].reverse().map((entry, idx) => {
+                    const isLatest = idx === 0;
+                    const pwdText = typeof entry === 'string' ? entry : entry.password;
+                    const dateText = entry.changedAt ? formatDateTime(entry.changedAt) : 'Initial Registration';
+                    const isCopied = copiedPwdIdx === idx;
+
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          border: '1px solid var(--border)',
+                          backgroundColor: isLatest ? 'var(--surface)' : 'var(--bg-secondary)',
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                              {pwdText || '—'}
+                            </span>
+                            {isLatest && (
+                              <span className="badge badge-success" style={{ fontSize: '0.68rem', padding: '1px 6px' }}>
+                                Current
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                            Set: {dateText}
+                          </div>
+                        </div>
+
+                        {pwdText && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            icon={isCopied ? FiCheck : FiCopy}
+                            onClick={() => {
+                              navigator.clipboard.writeText(pwdText);
+                              setCopiedPwdIdx(idx);
+                              toast.success('Historical password copied');
+                              setTimeout(() => setCopiedPwdIdx(null), 2000);
+                            }}
+                          >
+                            {isCopied ? 'Copied' : 'Copy'}
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>
+                  No previous password change records found.
+                </p>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+              <Button variant="secondary" onClick={() => setHistoryUser(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Add New Godown Modal */}

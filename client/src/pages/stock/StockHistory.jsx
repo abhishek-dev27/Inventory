@@ -13,6 +13,9 @@ import {
   FiFileText,
   FiCheckCircle,
   FiPrinter,
+  FiEdit2,
+  FiSave,
+  FiX,
 } from 'react-icons/fi';
 import TransactionTable from '../../components/stock/TransactionTable';
 import Input from '../../components/common/Input';
@@ -41,6 +44,22 @@ const StockHistory = () => {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, pages: 1 });
   const [selectedTx, setSelectedTx] = useState(null);
+  const [editingTx, setEditingTx] = useState(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    quantity: 1,
+    reason: '',
+    personName: '',
+    place: '',
+    referenceNo: '',
+    transactionDate: '',
+    senderPhone: '',
+    senderAddress: '',
+    senderCompany: '',
+    notes: '',
+    serialNumbers: '',
+  });
 
   const fetchTransactions = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoading(true);
@@ -90,6 +109,106 @@ const StockHistory = () => {
     setRefreshing(true);
     await fetchTransactions(true);
     toast.success('Ledger updated');
+  };
+
+  const handleOpenEdit = (tx) => {
+    setEditingTx(tx);
+    let serialsStr = '';
+    if (tx.serialNumbers) {
+      if (Array.isArray(tx.serialNumbers)) {
+        serialsStr = tx.serialNumbers.join(', ');
+      } else if (typeof tx.serialNumbers === 'string') {
+        try {
+          const parsed = JSON.parse(tx.serialNumbers);
+          serialsStr = Array.isArray(parsed) ? parsed.join(', ') : tx.serialNumbers;
+        } catch (e) {
+          serialsStr = tx.serialNumbers;
+        }
+      }
+    }
+
+    const txDate = tx.transactionDate || tx.createdAt;
+    let formattedDate = '';
+    if (txDate) {
+      const d = new Date(txDate);
+      // Format YYYY-MM-DDTHH:mm for datetime-local input
+      const pad = (n) => String(n).padStart(2, '0');
+      formattedDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    setEditFormData({
+      quantity: tx.quantity || 1,
+      reason: tx.reason || '',
+      personName: tx.personName || '',
+      place: tx.place || '',
+      referenceNo: tx.referenceNo || '',
+      transactionDate: formattedDate,
+      senderPhone: tx.senderPhone || '',
+      senderAddress: tx.senderAddress || '',
+      senderCompany: tx.senderCompany || '',
+      notes: tx.notes || '',
+      serialNumbers: serialsStr,
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editingTx) return;
+
+    const qty = parseInt(editFormData.quantity, 10);
+    if (isNaN(qty) || qty <= 0) {
+      toast.error('Quantity must be greater than 0');
+      return;
+    }
+
+    if (!editFormData.reason?.trim()) {
+      toast.error('Reason / Category is required');
+      return;
+    }
+
+    setEditSubmitting(true);
+    try {
+      const serialsArray = editFormData.serialNumbers
+        ? editFormData.serialNumbers
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+
+      const payload = {
+        quantity: qty,
+        reason: editFormData.reason.trim(),
+        personName: editFormData.personName ? editFormData.personName.trim() : null,
+        place: editFormData.place ? editFormData.place.trim() : null,
+        referenceNo: editFormData.referenceNo ? editFormData.referenceNo.trim() : null,
+        transactionDate: editFormData.transactionDate ? new Date(editFormData.transactionDate) : undefined,
+        senderPhone: editFormData.senderPhone ? editFormData.senderPhone.trim() : null,
+        senderAddress: editFormData.senderAddress ? editFormData.senderAddress.trim() : null,
+        senderCompany: editFormData.senderCompany ? editFormData.senderCompany.trim() : null,
+        notes: editFormData.notes ? editFormData.notes.trim() : null,
+        serialNumbers: serialsArray,
+      };
+
+      const response = await stockService.updateTransaction(editingTx.id, payload);
+      toast.success('Stock entry updated successfully');
+      setEditModalOpen(false);
+
+      if (selectedTx && selectedTx.id === editingTx.id && response?.data) {
+        setSelectedTx(response.data);
+      }
+      setEditingTx(null);
+      fetchTransactions(true);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update stock transaction');
+    } finally {
+      setEditSubmitting(false);
+    }
   };
 
   const exportToCSV = () => {
@@ -363,6 +482,7 @@ const StockHistory = () => {
           <TransactionTable
             transactions={transactions}
             onInspect={(tx) => setSelectedTx(tx)}
+            onEdit={handleOpenEdit}
           />
 
           {/* Pagination */}
@@ -677,7 +797,7 @@ const StockHistory = () => {
             </div>
 
             <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <Button
                   variant="primary"
                   size="sm"
@@ -694,6 +814,18 @@ const StockHistory = () => {
                 >
                   Print Voucher
                 </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={FiEdit2}
+                  onClick={() => {
+                    const txToEdit = selectedTx;
+                    setSelectedTx(null);
+                    handleOpenEdit(txToEdit);
+                  }}
+                >
+                  Edit Entry
+                </Button>
               </div>
 
               <Button variant="secondary" onClick={() => setSelectedTx(null)}>
@@ -701,6 +833,166 @@ const StockHistory = () => {
               </Button>
             </div>
           </div>
+        )}
+      </Modal>
+
+      {/* EDIT STOCK ENTRY MODAL */}
+      <Modal
+        isOpen={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setEditingTx(null);
+        }}
+        title={`Edit Stock ${editingTx?.type === 'in' ? 'Inward (Restock)' : 'Outward (Dispatch)'} Entry`}
+        subtitle={editingTx ? `Modifying Transaction #${editingTx.id} • ${editingTx.product?.name || 'Product'}` : ''}
+        maxWidth="640px"
+      >
+        {editingTx && (
+          <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Header info badge */}
+            <div
+              style={{
+                padding: '12px 14px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: editingTx.type === 'in' ? 'var(--success-bg)' : 'var(--danger-bg)',
+                border: editingTx.type === 'in' ? '1px solid var(--success-border)' : '1px solid var(--danger-border)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '8px',
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: editingTx.type === 'in' ? 'var(--success)' : 'var(--danger)' }}>
+                  📦 {editingTx.product?.name} ({editingTx.product?.sku || 'SKU'})
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                  Available in Inventory: <strong>{editingTx.product?.quantity ?? 0} {editingTx.product?.unit || 'pcs'}</strong>
+                </div>
+              </div>
+              <span className={`badge ${editingTx.type === 'in' ? 'badge-in' : 'badge-out'}`} style={{ textTransform: 'uppercase', fontWeight: 700 }}>
+                {editingTx.type === 'in' ? 'Stock Inward' : 'Stock Outward'}
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+              <Input
+                label={`Quantity (${editingTx.product?.unit || 'pcs'})`}
+                name="quantity"
+                type="number"
+                min="1"
+                required
+                value={editFormData.quantity}
+                onChange={handleEditChange}
+                helperText="Changing quantity will automatically adjust product available stock"
+              />
+
+              <Input
+                label="Date & Time"
+                name="transactionDate"
+                type="datetime-local"
+                value={editFormData.transactionDate}
+                onChange={handleEditChange}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+              <Input
+                label={editingTx.type === 'in' ? 'Sender / Supplier Name' : 'Recipient Person / Technician'}
+                name="personName"
+                placeholder="e.g. Rahul Sharma"
+                value={editFormData.personName}
+                onChange={handleEditChange}
+              />
+
+              <Input
+                label={editingTx.type === 'in' ? 'Origin / Supplier Address' : 'Destination Place / Project Site'}
+                name="place"
+                placeholder="e.g. Ranchi Site, Phase-2"
+                value={editFormData.place}
+                onChange={handleEditChange}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+              <Input
+                label="Reason / Movement Category"
+                name="reason"
+                required
+                placeholder="e.g. Project Site Dispatch, Restock, Maintenance"
+                value={editFormData.reason}
+                onChange={handleEditChange}
+              />
+
+              <Input
+                label="Reference / Bill / Invoice #"
+                name="referenceNo"
+                placeholder="e.g. BILL-99231 or INV-004"
+                value={editFormData.referenceNo}
+                onChange={handleEditChange}
+              />
+            </div>
+
+            {editingTx.type === 'in' && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                <Input
+                  label="Contact Phone"
+                  name="senderPhone"
+                  placeholder="e.g. 9876543210"
+                  value={editFormData.senderPhone}
+                  onChange={handleEditChange}
+                />
+                <Input
+                  label="Company / Vendor"
+                  name="senderCompany"
+                  placeholder="e.g. Tata Power Solar"
+                  value={editFormData.senderCompany}
+                  onChange={handleEditChange}
+                />
+              </div>
+            )}
+
+            <Input
+              label="Serial Numbers (Optional, comma-separated)"
+              name="serialNumbers"
+              placeholder="e.g. SN1001, SN1002, SN1003"
+              value={editFormData.serialNumbers}
+              onChange={handleEditChange}
+              helperText="Enter serial numbers separated by commas"
+            />
+
+            <Input
+              as="textarea"
+              label="Notes & Remarks"
+              name="notes"
+              rows={2}
+              placeholder="Add any internal dispatch remarks or delivery notes..."
+              value={editFormData.notes}
+              onChange={handleEditChange}
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setEditModalOpen(false);
+                  setEditingTx(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                icon={FiSave}
+                loading={editSubmitting}
+              >
+                Save Changes & Update Stock
+              </Button>
+            </div>
+          </form>
         )}
       </Modal>
     </div>

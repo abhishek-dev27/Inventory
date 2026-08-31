@@ -55,6 +55,15 @@ const User = sequelize.define('User', {
     allowNull: true,
     defaultValue: ['dashboard', 'products', 'stock_in', 'stock_out', 'stock_history'],
   },
+  savedPassword: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  passwordHistory: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
   refreshToken: {
     type: DataTypes.STRING(500),
     allowNull: true,
@@ -73,13 +82,19 @@ const User = sequelize.define('User', {
   timestamps: true,
   hooks: {
     beforeCreate: async (user) => {
-      if (user.password) {
+      if (user.password && !user.password.startsWith('$2a$') && !user.password.startsWith('$2b$')) {
+        user.savedPassword = user.password;
+        user.passwordHistory = [{ password: user.password, changedAt: new Date().toISOString() }];
         const salt = await bcrypt.genSalt(12);
         user.password = await bcrypt.hash(user.password, salt);
       }
     },
     beforeUpdate: async (user) => {
-      if (user.changed('password')) {
+      if (user.changed('password') && !user.password.startsWith('$2a$') && !user.password.startsWith('$2b$')) {
+        user.savedPassword = user.password;
+        const currentHist = Array.isArray(user.passwordHistory) ? [...user.passwordHistory] : [];
+        currentHist.push({ password: user.password, changedAt: new Date().toISOString() });
+        user.passwordHistory = currentHist;
         const salt = await bcrypt.genSalt(12);
         user.password = await bcrypt.hash(user.password, salt);
       }

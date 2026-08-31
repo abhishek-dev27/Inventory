@@ -29,6 +29,7 @@ import Modal from '../../components/common/Modal';
 import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/common/EmptyState';
 import CustomerImportModal from '../../components/customers/CustomerImportModal';
+import StickyTableContainer from '../../components/common/StickyTableContainer';
 import { customerService } from '../../services/customerService';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDate, formatDateTime, getFinancialYear, getFinancialYearsList } from '../../utils/formatDate';
@@ -822,7 +823,7 @@ const Customers = () => {
             onAction={handleOpenAdd}
           />
         ) : (
-          <div style={{ overflowX: 'auto', position: 'relative' }}>
+          <StickyTableContainer>
             <table
               style={{
                 width: '100%',
@@ -1162,7 +1163,7 @@ const Customers = () => {
                 ))}
               </tbody>
             </table>
-          </div>
+          </StickyTableContainer>
         )}
       </div>
 

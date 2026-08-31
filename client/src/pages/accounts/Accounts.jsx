@@ -31,6 +31,7 @@ import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/common/EmptyState';
 import CustomerPaymentPendingCard from '../../components/dashboard/CustomerPaymentPendingCard';
 import ProjectPerformanceAndNPMCard from '../../components/dashboard/ProjectPerformanceAndNPMCard';
+import StickyTableContainer from '../../components/common/StickyTableContainer';
 import toast from 'react-hot-toast';
 
 export const WORK_STATUSES = [
@@ -939,7 +940,7 @@ const Accounts = () => {
             onAction={handleOpenAdd}
           />
         ) : (
-          <div style={{ overflowX: 'auto', position: 'relative' }}>
+          <StickyTableContainer>
             <table
               style={{
                 width: '100%',
@@ -1466,7 +1467,7 @@ const Accounts = () => {
                 })}
               </tbody>
             </table>
-          </div>
+          </StickyTableContainer>
         )}
       </div>
 

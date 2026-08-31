@@ -2,6 +2,7 @@ const StockTransaction = require('../models/StockTransaction');
 const Product = require('../models/Product');
 const User = require('../models/User');
 const { Op } = require('sequelize');
+const { sequelize } = require('../config/db');
 
 const productAttributes = [
   'id',
@@ -159,4 +160,130 @@ const getTransactionById = async (req, res, next) => {
   }
 };
 
-module.exports = { getTransactions, getTransactionById };
+// @desc    Update an existing transaction / stock entry
+// @route   PUT /api/transactions/:id
+// @access  Private
+const updateTransaction = async (req, res, next) => {
+  const t = await sequelize.transaction();
+
+  try {
+    const { id } = req.params;
+    const {
+      quantity,
+      reason,
+      personName,
+      place,
+      referenceNo,
+      senderPhone,
+      senderAddress,
+      senderCompany,
+      notes,
+      transactionDate,
+      serialNumbers,
+    } = req.body;
+
+    const transaction = await StockTransaction.findByPk(id, { transaction: t });
+
+    if (!transaction) {
+      await t.rollback();
+      res.status(404);
+      throw new Error('Stock transaction not found');
+    }
+
+    const product = await Product.findByPk(transaction.productId, { transaction: t });
+    if (!product) {
+      await t.rollback();
+      res.status(404);
+      throw new Error('Associated product not found');
+    }
+
+    // Handle Quantity Adjustment if changed
+    if (quantity !== undefined) {
+      const newQty = parseInt(quantity, 10);
+      if (isNaN(newQty) || newQty <= 0) {
+        await t.rollback();
+        res.status(400);
+        throw new Error('Quantity must be a positive number');
+      }
+
+      const oldQty = transaction.quantity;
+      const diff = newQty - oldQty;
+
+      if (diff !== 0) {
+        if (transaction.type === 'in') {
+          // Stock IN transaction:
+          // If newQty > oldQty (diff > 0): stock increases by diff
+          // If newQty < oldQty (diff < 0): stock decreases by -diff
+          if (product.quantity + diff < 0) {
+            await t.rollback();
+            res.status(400);
+            throw new Error(
+              `Cannot reduce Stock In quantity by ${Math.abs(diff)}. Available stock is only ${product.quantity} ${product.unit || 'pcs'}.`
+            );
+          }
+          product.quantity += diff;
+        } else if (transaction.type === 'out') {
+          // Stock OUT transaction:
+          // If newQty > oldQty (diff > 0): more items dispatched -> product stock reduces by diff
+          // If newQty < oldQty (diff < 0): fewer items dispatched -> product stock increases by -diff
+          const requiredStockChange = -diff;
+          if (product.quantity + requiredStockChange < 0) {
+            await t.rollback();
+            res.status(400);
+            throw new Error(
+              `Insufficient stock to increase dispatch quantity by ${diff}. Available stock is only ${product.quantity} ${product.unit || 'pcs'}.`
+            );
+          }
+          product.quantity += requiredStockChange;
+        }
+
+        await product.save({ transaction: t });
+        transaction.quantity = newQty;
+      }
+    }
+
+    // Update other metadata fields
+    if (reason !== undefined) transaction.reason = reason ? reason.trim() : transaction.reason;
+    if (personName !== undefined) transaction.personName = personName ? personName.trim() : null;
+    if (place !== undefined) transaction.place = place ? place.trim() : null;
+    if (referenceNo !== undefined) transaction.referenceNo = referenceNo ? referenceNo.trim() : null;
+    if (senderPhone !== undefined) transaction.senderPhone = senderPhone ? senderPhone.trim() : null;
+    if (senderAddress !== undefined) transaction.senderAddress = senderAddress ? senderAddress.trim() : null;
+    if (senderCompany !== undefined) transaction.senderCompany = senderCompany ? senderCompany.trim() : null;
+    if (notes !== undefined) transaction.notes = notes ? notes.trim() : null;
+    if (transactionDate !== undefined) transaction.transactionDate = new Date(transactionDate);
+
+    if (serialNumbers !== undefined) {
+      const serialsArray = Array.isArray(serialNumbers)
+        ? serialNumbers.map((s) => String(s).trim()).filter(Boolean)
+        : typeof serialNumbers === 'string'
+        ? serialNumbers.split(',').map((s) => s.trim()).filter(Boolean)
+        : [];
+      transaction.serialNumbers = serialsArray;
+    }
+
+    await transaction.save({ transaction: t });
+    await t.commit();
+
+    // Fetch updated transaction with associations
+    const updatedTx = await StockTransaction.findByPk(id, {
+      include: [
+        { model: Product, as: 'product', attributes: productAttributes },
+        { model: User, as: 'user', attributes: ['id', 'name', 'email'] },
+      ],
+    });
+
+    res.json({
+      success: true,
+      message: 'Stock transaction entry updated successfully',
+      data: updatedTx,
+    });
+  } catch (error) {
+    if (t && !t.finished) {
+      await t.rollback();
+    }
+    next(error);
+  }
+};
+
+module.exports = { getTransactions, getTransactionById, updateTransaction };
