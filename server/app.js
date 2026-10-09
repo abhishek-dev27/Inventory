@@ -20,6 +20,9 @@ const cookieParser = require('cookie-parser');
 const hpp = require('hpp');
 const rateLimit = require('express-rate-limit');
 
+const path = require('path');
+const fs = require('fs');
+
 // Import middleware
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
@@ -28,8 +31,11 @@ const app = express();
 // Trust proxy for Nginx / reverse proxy setup on GCP VM
 app.set('trust proxy', 1);
 
-// 1. Security HTTP Headers
-app.use(helmet());
+// 1. Security HTTP Headers (relaxed CSP for client SPA assets)
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
 
 // 2. Cross-Origin Resource Sharing with Credentials
 app.use(cors({
@@ -131,6 +137,35 @@ app.use('/api/activity-logs', activityLogRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/godowns', godownRoutes);
+
+// Serve frontend client build if available
+const clientDistPath = path.join(__dirname, '../client/dist');
+
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+
+  app.get('*', (req, res, next) => {
+    // If request is meant for /api, pass to error handler / 404
+    if (req.originalUrl.startsWith('/api')) {
+      return next();
+    }
+    res.sendFile(path.join(clientDistPath, 'index.html'));
+  });
+} else {
+  // Informative landing page if frontend client is not yet built
+  app.get('/', (req, res) => {
+    res.json({
+      success: true,
+      service: 'Inventory Management API',
+      status: 'Online',
+      message: 'API is running. Build the frontend client (`cd client && npm run build`) to serve the web application here.',
+      endpoints: {
+        health: '/api/health',
+        cluster: '/api/cluster/status',
+      },
+    });
+  });
+}
 
 // Error handling
 app.use(notFound);

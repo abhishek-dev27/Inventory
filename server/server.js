@@ -29,7 +29,46 @@ Account.belongsTo(User, { foreignKey: 'userId', as: 'creator' });
 Customer.hasOne(Account, { foreignKey: 'customerId', as: 'account' });
 Account.belongsTo(Customer, { foreignKey: 'customerId', as: 'customer' });
 
+const path = require('path');
+const fs = require('fs');
+const { execSync } = require('child_process');
+
 const PORT = process.env.PORT || 5000;
+
+// Auto-build frontend client if dist/ folder is missing
+const ensureClientBuild = async () => {
+  const clientDir = path.join(__dirname, '../client');
+  const distDir = path.join(clientDir, 'dist');
+
+  if (fs.existsSync(distDir)) {
+    console.log('✅ Frontend client build found (client/dist/)');
+    return;
+  }
+
+  // Only attempt auto-build on the primary worker (PID check avoids duplicate builds in cluster mode)
+  const isClusterWorker = process.env.IS_CLUSTER_WORKER === 'true' || Boolean(process.send);
+  if (isClusterWorker) {
+    console.log('⏭️  Skipping auto-build (cluster worker — primary will handle it)');
+    return;
+  }
+
+  if (!fs.existsSync(path.join(clientDir, 'package.json'))) {
+    console.warn('⚠️  client/package.json not found — skipping auto-build');
+    return;
+  }
+
+  console.log('🔨 Frontend build not found. Auto-building client...');
+  try {
+    execSync('npm install && npm run build', {
+      cwd: clientDir,
+      stdio: 'inherit',
+      timeout: 120000, // 2 minute timeout
+    });
+    console.log('✅ Frontend auto-build complete → client/dist/');
+  } catch (buildError) {
+    console.error('⚠️  Auto-build failed (server will still start, but frontend will be unavailable):', buildError.message);
+  }
+};
 
 // Initialize database, sync tables, and seed default admin
 const initDatabase = async (syncTables = true) => {
@@ -71,6 +110,9 @@ const startServer = async (port = PORT, shouldInitDb = true) => {
     } else {
       await connectDB();
     }
+
+    // Auto-build frontend client if dist/ is missing (production safety net)
+    await ensureClientBuild();
 
     const server = app.listen(port, () => {
       const isWorker = process.env.IS_CLUSTER_WORKER === 'true' || Boolean(process.send);

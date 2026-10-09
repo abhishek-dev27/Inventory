@@ -10,7 +10,9 @@
     "start:gateway": "node loadbalancer.js",
     "dev": "nodemon server.js",
     "dev:cluster": "nodemon cluster.js",
-    "view-db": "node view-db.js"
+    "view-db": "node view-db.js",
+    "build:client": "cd ../client && npm install && npm run build",
+    "deploy": "git -C .. pull origin main && npm install --production && npm run build:client"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
