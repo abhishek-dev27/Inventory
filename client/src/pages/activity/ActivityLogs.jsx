@@ -446,7 +446,7 @@ const ActivityLogs = () => {
           <table>
             <thead>
               <tr>
-                <th>User / Account</th>
+                <th>User / Operator</th>
                 <th>Event / Status</th>
                 <th>Location & IP Address</th>
                 <th>Device & Browser</th>

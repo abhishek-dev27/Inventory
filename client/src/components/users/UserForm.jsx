@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import GodownModal from '../godowns/GodownModal';
+import { useGodowns } from '../../context/GodownContext';
 import { ROLES, GODOWN_LOCATIONS, ALL_LOCATIONS_OPTION, SYSTEM_MODULES, MODULE_PRESETS } from '../../utils/constants';
-import { FiPlus, FiCheck, FiShield, FiBox, FiGrid, FiArrowDownLeft, FiArrowUpRight, FiClock, FiUsers, FiCreditCard, FiBarChart2 } from 'react-icons/fi';
+import { FiPlus, FiCheck, FiShield, FiBox, FiGrid, FiArrowDownLeft, FiArrowUpRight, FiClock, FiBarChart2 } from 'react-icons/fi';
 
 const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false, godowns = [] }) => {
-  const [godownList, setGodownList] = useState(godowns && godowns.length > 0 ? godowns : GODOWN_LOCATIONS);
+  const { godownNames } = useGodowns();
+  const availableGodowns = godowns && godowns.length > 0 ? godowns : (godownNames?.length > 0 ? godownNames : GODOWN_LOCATIONS);
+  const [godownList, setGodownList] = useState(availableGodowns);
   const [showGodownModal, setShowGodownModal] = useState(false);
 
   const defaultStaffModules = MODULE_PRESETS.INVENTORY_ONLY.modules;
@@ -24,10 +27,9 @@ const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false,
   });
 
   useEffect(() => {
-    if (godowns && godowns.length > 0) {
-      setGodownList(godowns);
-    }
-  }, [godowns]);
+    const list = godowns && godowns.length > 0 ? godowns : (godownNames?.length > 0 ? godownNames : GODOWN_LOCATIONS);
+    setGodownList(list);
+  }, [godowns, godownNames]);
 
   const [errors, setErrors] = useState({});
 
@@ -421,8 +423,6 @@ const UserForm = ({ initialData = {}, onSubmit, loading = false, isEdit = false,
                         {mod.id === 'stock_in' && <FiArrowDownLeft size={15} />}
                         {mod.id === 'stock_out' && <FiArrowUpRight size={15} />}
                         {mod.id === 'stock_history' && <FiClock size={15} />}
-                        {mod.id === 'customers' && <FiUsers size={15} />}
-                        {mod.id === 'accounts' && <FiCreditCard size={15} />}
                         {mod.id === 'reports' && <FiBarChart2 size={15} />}
                         {mod.label}
                       </div>

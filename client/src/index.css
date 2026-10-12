@@ -1095,3 +1095,24 @@ tr:hover td {
     display: block !important;
   }
 }
+
+/* Category Pills Visible Horizontal Scrollbar */
+.category-pills-scroll {
+  overflow-x: auto !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: #94a3b8 #f1f5f9 !important;
+}
+.category-pills-scroll::-webkit-scrollbar {
+  height: 7px !important;
+}
+.category-pills-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9 !important;
+  border-radius: 9999px !important;
+}
+.category-pills-scroll::-webkit-scrollbar-thumb {
+  background: #94a3b8 !important;
+  border-radius: 9999px !important;
+}
+.category-pills-scroll::-webkit-scrollbar-thumb:hover {
+  background: #64748b !important;
+}

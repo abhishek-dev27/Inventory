@@ -251,7 +251,8 @@ const updateTransaction = async (req, res, next) => {
     if (senderAddress !== undefined) transaction.senderAddress = senderAddress ? senderAddress.trim() : null;
     if (senderCompany !== undefined) transaction.senderCompany = senderCompany ? senderCompany.trim() : null;
     if (notes !== undefined) transaction.notes = notes ? notes.trim() : null;
-    if (transactionDate !== undefined) transaction.transactionDate = new Date(transactionDate);
+    const isAdmin = req.user && req.user.role === 'admin';
+    if (transactionDate !== undefined && isAdmin) transaction.transactionDate = new Date(transactionDate);
 
     if (serialNumbers !== undefined) {
       const serialsArray = Array.isArray(serialNumbers)

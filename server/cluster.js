@@ -86,3 +86,13 @@ if (cluster.isPrimary || cluster.isMaster) {
   // Worker Process: Connect to DB and bind to port (OS load balances sockets automatically)
   startServer(process.env.PORT || 5000, false);
 }
+
+// 🛡️ Global Exception Safety: Prevent unexpected cluster crashes
+process.on('uncaughtException', (err) => {
+  console.error('🚨 [CRITICAL SAFETY - CLUSTER] Uncaught Exception:', err.message);
+  console.error(err.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🚨 [CRITICAL SAFETY - CLUSTER] Unhandled Rejection at:', promise, 'reason:', reason);
+});

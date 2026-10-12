@@ -1,9 +1,11 @@
 import React from 'react';
 import { FiMenu, FiBell, FiSearch, FiUser } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth';
+import { useGodowns } from '../../context/GodownContext';
 
 const Navbar = ({ onToggleSidebar }) => {
   const { user } = useAuth();
+  const { godownNames } = useGodowns();
 
   return (
     <header
@@ -70,7 +72,7 @@ const Navbar = ({ onToggleSidebar }) => {
           }}
           title={user?.role === 'admin' ? 'Admin has access to all godowns & locations' : `Designated access: ${user?.assignedLocation || 'Ranchi'}`}
         >
-          🏢 {user?.role === 'admin' ? 'All Godowns' : (user?.assignedLocation || 'Ranchi')}
+          🏢 {user?.role === 'admin' ? `All Godowns (${godownNames?.length || 0})` : (user?.assignedLocation || 'Ranchi')}
         </span>
 
         <span

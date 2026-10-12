@@ -79,7 +79,7 @@ const UserTable = ({ users = [], onEdit, onDelete, onViewHistory, currentUserId 
             const usernameDisplay = u.username ? `@${u.username}` : `@${(u.name || '').toLowerCase().replace(/[^a-z0-9]/g, '')}`;
 
             const allowed = Array.isArray(u.allowedModules) ? u.allowedModules : ['dashboard', 'products', 'stock_in', 'stock_out', 'stock_history'];
-            const hasCommercials = allowed.includes('customers') || allowed.includes('accounts') || allowed.includes('reports');
+            const hasFullModules = allowed.includes('reports');
 
             return (
               <tr key={u.id}>
@@ -231,7 +231,7 @@ const UserTable = ({ users = [], onEdit, onDelete, onViewHistory, currentUserId 
                     <span className="badge badge-primary" style={{ fontSize: '0.72rem' }}>
                       👑 Full Access
                     </span>
-                  ) : !hasCommercials ? (
+                  ) : !hasFullModules ? (
                     <span
                       style={{
                         display: 'inline-flex',

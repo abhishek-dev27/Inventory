@@ -6,8 +6,6 @@ import {
   FiArrowDownLeft,
   FiArrowUpRight,
   FiClock,
-  FiUsers,
-  FiCreditCard,
   FiBarChart2,
   FiLogOut,
   FiPackage,
@@ -34,15 +32,13 @@ const Sidebar = ({ isOpen, isMobile, onClose }) => {
 
   const allNavItems = [
     { to: '/', label: 'Dashboard', icon: FiGrid, end: true, module: 'dashboard' },
-    { to: '/customers', label: 'Customers & BD', icon: FiUsers, module: 'customers' },
-    { to: '/accounts', label: 'Accounts & Billing', icon: FiCreditCard, module: 'accounts' },
     { to: '/products', label: 'Products', icon: FiBox, module: 'products' },
     { to: '/stock/in', label: 'Stock In', icon: FiArrowDownLeft, module: 'stock_in' },
     { to: '/stock/out', label: 'Stock Out', icon: FiArrowUpRight, module: 'stock_out' },
     { to: '/stock/history', label: 'Stock History', icon: FiClock, module: 'stock_history' },
     ...(isAdmin
       ? [
-          { to: '/users', label: 'User Management', icon: FiUserCheck, module: 'users' },
+          { to: '/users', label: 'Users & Godowns', icon: FiUserCheck, module: 'users' },
           { to: '/activity-logs', label: 'Activity Logs', icon: FiShield, module: 'activity_logs' },
         ]
       : []),

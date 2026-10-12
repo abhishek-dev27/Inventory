@@ -27,6 +27,21 @@ const sequelize = new Sequelize(
       acquire: 30000,
       idle: 10000,
     },
+    retry: {
+      match: [
+        /SequelizeConnectionError/,
+        /SequelizeConnectionRefusedError/,
+        /SequelizeHostNotFoundError/,
+        /SequelizeHostNotReachableError/,
+        /SequelizeInvalidConnectionError/,
+        /SequelizeConnectionTimedOutError/,
+        /TimeoutError/,
+        /PROTOCOL_CONNECTION_LOST/,
+        /ECONNRESET/,
+        /ETIMEDOUT/,
+      ],
+      max: 5,
+    },
     define: {
       timestamps: true,
       underscored: false,

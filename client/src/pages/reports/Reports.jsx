@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FiCalendar, FiBarChart2, FiTrendingUp, FiArrowRight, FiUsers } from 'react-icons/fi';
+import { FiCalendar, FiBarChart2, FiTrendingUp, FiArrowRight } from 'react-icons/fi';
 
 const Reports = () => {
   const reportCards = [
@@ -27,14 +27,6 @@ const Reports = () => {
       icon: FiTrendingUp,
       color: 'warning',
       tag: 'Demand Insights',
-    },
-    {
-      to: '/reports/customers',
-      title: 'Customer Dossier & Dispatch Details',
-      description: 'Track all customer deliveries, project sites, equipment dispatch bills, unit serials, and client order valuations.',
-      icon: FiUsers,
-      color: 'info',
-      tag: 'Client Dossier',
     },
   ];
 

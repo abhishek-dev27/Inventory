@@ -137,7 +137,7 @@ const GodownDistributionCard = ({ godownBreakdown = [], totalStock = 0, onRefres
               transition: 'all var(--transition-fast)',
             }}
           >
-            <FiPlus size={14} /> Add Godown
+            <FiLayers size={14} /> Manage & Delete Godowns
           </button>
 
           <button
@@ -175,7 +175,7 @@ const GodownDistributionCard = ({ godownBreakdown = [], totalStock = 0, onRefres
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: '16px',
         }}
       >

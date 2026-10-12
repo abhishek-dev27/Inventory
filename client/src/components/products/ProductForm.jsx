@@ -903,7 +903,7 @@ const ProductForm = ({ initialData = {}, onSubmit, loading = false, isEdit = fal
               <Input
                 label="Name of Sender Person"
                 name="senderName"
-                placeholder="e.g. Rajesh Kumar (Service Engineer / Customer)"
+                placeholder="e.g. Rajesh Kumar (Service Engineer / Person)"
                 value={formData.senderName || ''}
                 onChange={handleChange}
                 icon={FiUser}

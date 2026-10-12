@@ -37,7 +37,8 @@ const stockIn = async (req, res, next) => {
 
   try {
     const {
-      productId,
+      items, // Multi-item inward array: [{ productId, quantity, serialNumbers }]
+      productId, // Single-item fallback
       quantity,
       reason,
       personName,
@@ -51,79 +52,112 @@ const stockIn = async (req, res, next) => {
       transactionDate,
     } = req.body;
 
-    if (!productId || !quantity || !reason) {
+    if (!reason?.trim()) {
       res.status(400);
-      throw new Error('productId, quantity, and reason are required');
+      throw new Error('Inward reason is required');
     }
 
-    const qty = parseInt(quantity, 10);
-    if (isNaN(qty) || qty <= 0) {
+    // Normalize items array
+    const inwardItems =
+      Array.isArray(items) && items.length > 0
+        ? items
+        : productId && quantity
+        ? [{ productId, quantity, serialNumbers }]
+        : [];
+
+    if (inwardItems.length === 0) {
       res.status(400);
-      throw new Error('Quantity must be greater than 0');
+      throw new Error('At least one product item must be added to the inward bill');
     }
 
-    const product = await Product.findByPk(productId, { transaction: t });
-    if (!product) {
-      res.status(404);
-      throw new Error('Product not found');
+    const billRef = referenceNo?.trim() || `INW-${Date.now().toString().slice(-6)}`;
+    const isAdmin = req.user && req.user.role === 'admin';
+    const txDate = isAdmin && transactionDate ? new Date(transactionDate) : new Date();
+
+    const createdTxIds = [];
+
+    // Process each item in the inward bill
+    for (const item of inwardItems) {
+      const pId = parseInt(item.productId, 10);
+      const qty = parseInt(item.quantity, 10);
+
+      if (!pId || isNaN(qty) || qty <= 0) {
+        res.status(400);
+        throw new Error('Each item must have a valid product and quantity greater than 0');
+      }
+
+      const product = await Product.findByPk(pId, { transaction: t });
+      if (!product) {
+        res.status(404);
+        throw new Error(`Product with ID ${pId} not found`);
+      }
+
+      // Update product quantity
+      product.quantity += qty;
+
+      // Append any new serial numbers
+      const newSerials = Array.isArray(item.serialNumbers)
+        ? item.serialNumbers.map((s) => String(s).trim()).filter(Boolean)
+        : [];
+
+      if (newSerials.length > 0) {
+        const existingSerials = Array.isArray(product.serialNumbers) ? product.serialNumbers : [];
+        product.serialNumbers = Array.from(new Set([...existingSerials, ...newSerials]));
+      }
+
+      // If spare material, also optionally update sender record on product
+      if (product.productType === 'Spare' && personName) {
+        product.senderName = personName.trim();
+        if (senderPhone) product.senderPhone = senderPhone.trim();
+        if (senderAddress) product.senderAddress = senderAddress.trim();
+        if (senderCompany) product.senderCompany = senderCompany.trim();
+        if (reason) product.senderReason = reason.trim();
+      }
+
+      await product.save({ transaction: t });
+
+      // Create transaction record for each item
+      const tx = await StockTransaction.create(
+        {
+          productId: pId,
+          userId: req.user.id,
+          type: 'in',
+          quantity: qty,
+          reason: reason.trim(),
+          personName: personName ? personName.trim() : null,
+          senderPhone: senderPhone ? senderPhone.trim() : null,
+          senderAddress: senderAddress ? senderAddress.trim() : null,
+          senderCompany: senderCompany ? senderCompany.trim() : null,
+          place: place ? place.trim() : null,
+          referenceNo: billRef,
+          serialNumbers: newSerials,
+          notes: notes ? notes.trim() : null,
+          transactionDate: txDate,
+        },
+        { transaction: t }
+      );
+
+      createdTxIds.push(tx.id);
     }
-
-    // Update product quantity
-    product.quantity += qty;
-
-    // Append any new serial numbers
-    const newSerials = Array.isArray(serialNumbers)
-      ? serialNumbers.map((s) => String(s).trim()).filter(Boolean)
-      : [];
-
-    if (newSerials.length > 0) {
-      const existingSerials = Array.isArray(product.serialNumbers) ? product.serialNumbers : [];
-      product.serialNumbers = Array.from(new Set([...existingSerials, ...newSerials]));
-    }
-
-    // If spare material, also optionally update sender record on product
-    if (product.productType === 'Spare' && personName) {
-      product.senderName = personName.trim();
-      if (senderPhone) product.senderPhone = senderPhone.trim();
-      if (senderAddress) product.senderAddress = senderAddress.trim();
-      if (senderCompany) product.senderCompany = senderCompany.trim();
-      if (reason) product.senderReason = reason.trim();
-    }
-
-    await product.save({ transaction: t });
-
-    // Create transaction record
-    const transaction = await StockTransaction.create(
-      {
-        productId,
-        userId: req.user.id,
-        type: 'in',
-        quantity: qty,
-        reason,
-        personName: personName || null,
-        senderPhone: senderPhone || null,
-        senderAddress: senderAddress || null,
-        senderCompany: senderCompany || null,
-        place: place || null,
-        referenceNo: referenceNo || null,
-        serialNumbers: newSerials,
-        notes: notes || null,
-        transactionDate: transactionDate ? new Date(transactionDate) : new Date(),
-      },
-      { transaction: t }
-    );
 
     await t.commit();
 
-    // Fetch with full product and user associations
-    const fullTransaction = await StockTransaction.findByPk(transaction.id, {
+    // Fetch full transactions for created items
+    const transactions = await StockTransaction.findAll({
+      where: { id: createdTxIds },
       include: [
         { model: Product, as: 'product', attributes: productAttributes },
         { model: User, as: 'user', attributes: ['id', 'name', 'email'] },
       ],
     });
 
-    res.status(201).json({ success: true, data: fullTransaction });
+    res.status(201).json({
+      success: true,
+      data: transactions[0] || null,
+      transactions,
+      billReference: billRef,
+      itemCount: inwardItems.length,
+    });
   } catch (error) {
     await t.rollback();
     next(error);
@@ -143,16 +177,16 @@ const stockOut = async (req, res, next) => {
       quantity,
       serialNumbers = [],
       reason = 'Project Site Dispatch',
-      personName, // Customer / Receiver name
+      personName, // Receiver / Consignee name
       place, // Destination site / address
-      referenceNo, // Bill / Challan / Invoice #
+      referenceNo, // Bill / Challan / Voucher #
       notes,
       transactionDate,
     } = req.body;
 
     if (!personName?.trim()) {
       res.status(400);
-      throw new Error('Customer / Receiver person name is required at the top');
+      throw new Error('Receiver / Consignee person name is required');
     }
 
     if (!place?.trim()) {
@@ -174,7 +208,8 @@ const stockOut = async (req, res, next) => {
 
     // Generate shared bill reference if not provided
     const billRef = referenceNo?.trim() || `BILL-${Date.now().toString().slice(-6)}`;
-    const txDate = transactionDate ? new Date(transactionDate) : new Date();
+    const isAdmin = req.user && req.user.role === 'admin';
+    const txDate = isAdmin && transactionDate ? new Date(transactionDate) : new Date();
 
     const createdTxIds = [];
 
@@ -216,7 +251,7 @@ const stockOut = async (req, res, next) => {
 
       await product.save({ transaction: t });
 
-      // Create transaction record for this item with the shared customer & bill reference
+      // Create transaction record for this item with the shared dispatch reference
       const tx = await StockTransaction.create(
         {
           productId: pId,

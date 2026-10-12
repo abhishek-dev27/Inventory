@@ -52,9 +52,11 @@ const StockIn = () => {
       <div className="page-header" style={{ marginBottom: '22px' }}>
         <div>
           <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800 }}>
-            Stock Inward Registration
+            Multi-Item Stock Inward Entry
           </h1>
-          <p className="page-subtitle">Receive incoming goods, purchase orders, or client RMA returns</p>
+          <p className="page-subtitle">
+            Receive incoming goods into godown and record multi-item manifest with unit serial numbers
+          </p>
         </div>
       </div>
 

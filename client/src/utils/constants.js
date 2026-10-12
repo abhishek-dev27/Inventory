@@ -11,9 +11,7 @@ export const SYSTEM_MODULES = [
   { id: 'stock_in', label: 'Stock In (Inward)', icon: 'FiArrowDownLeft', description: 'Inward entry vouchers & serial tracking' },
   { id: 'stock_out', label: 'Stock Out (Dispatch)', icon: 'FiArrowUpRight', description: 'Site dispatches & outward voucher generation' },
   { id: 'stock_history', label: 'Stock History & Passbook', icon: 'FiClock', description: 'Transaction audit log & passbook vouchers' },
-  { id: 'customers', label: 'Customers & BD Tracker', icon: 'FiUsers', description: 'Lead pipeline, project capacities, and BD site visits' },
-  { id: 'accounts', label: 'Accounts & Financial Ledger', icon: 'FiCreditCard', description: '5-stage milestone payments & collection balances' },
-  { id: 'reports', label: 'Reports & Analytics', icon: 'FiBarChart2', description: 'Executive daily/monthly stock & commercial reports' },
+  { id: 'reports', label: 'Reports & Analytics', icon: 'FiBarChart2', description: 'Executive daily/monthly stock movement reports' },
 ];
 
 export const MODULE_PRESETS = {
@@ -24,13 +22,13 @@ export const MODULE_PRESETS = {
   },
   FULL_STAFF: {
     name: 'Full Staff Access',
-    description: 'Access to all operational modules including Customers, Accounts, and Reports',
-    modules: ['dashboard', 'products', 'stock_in', 'stock_out', 'stock_history', 'customers', 'accounts', 'reports'],
+    description: 'Access to all operational inventory modules and Reports',
+    modules: ['dashboard', 'products', 'stock_in', 'stock_out', 'stock_history', 'reports'],
   },
   ADMIN: {
     name: 'Full Administrator',
     description: 'Complete unrestricted access to all modules, User Management, and Activity Logs',
-    modules: ['dashboard', 'products', 'stock_in', 'stock_out', 'stock_history', 'customers', 'accounts', 'reports', 'users', 'activity_logs'],
+    modules: ['dashboard', 'products', 'stock_in', 'stock_out', 'stock_history', 'reports', 'users', 'activity_logs'],
   },
 };
 
@@ -51,24 +49,35 @@ export const STOCK_TYPES = {
 
 export const STOCK_REASONS = {
   in: [
-    'Purchase Order',
-    'Supplier Delivery',
+    'Invoice',
+    'Delivery Challan',
     'Return from Site',
-    'Transfer In',
-    'Production / Assembly',
-    'Inventory Adjustment',
+    'Godown Transfer',
     'Other',
   ],
   out: [
-    'Project Site Dispatch',
-    'Customer Sale',
-    'Damaged / Defective',
-    'Maintenance Usage',
-    'Transfer Out',
-    'Expired / Obsolete',
-    'Inventory Adjustment',
+    'Invoice',
+    'Delivery Challan',
+    'Return from Site',
+    'Godown Transfer',
     'Other',
   ],
+};
+
+export const REASON_PREFIX_MAP_IN = {
+  'Invoice': 'INV',
+  'Delivery Challan': 'DC',
+  'Return from Site': 'RET',
+  'Godown Transfer': 'TRF',
+  'Other': 'INW',
+};
+
+export const REASON_PREFIX_MAP_OUT = {
+  'Invoice': 'INV',
+  'Delivery Challan': 'DC',
+  'Return from Site': 'RET',
+  'Godown Transfer': 'TRF',
+  'Other': 'OUT',
 };
 
 export const PRODUCT_TYPES = [

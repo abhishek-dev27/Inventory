@@ -12,8 +12,6 @@ const stockRoutes = require('./routes/stockRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const activityLogRoutes = require('./routes/activityLogRoutes');
-const customerRoutes = require('./routes/customerRoutes');
-const accountRoutes = require('./routes/accountRoutes');
 const godownRoutes = require('./routes/godownRoutes');
 
 const cookieParser = require('cookie-parser');
@@ -94,7 +92,7 @@ app.get('/api/health', (req, res) => {
   const mem = process.memoryUsage();
   res.json({
     status: 'ok',
-    service: 'Inventory & Commercials API',
+    service: 'Inventory Management API',
     worker: {
       pid: process.pid,
       uptimeSeconds: Math.floor(process.uptime()),
@@ -134,8 +132,6 @@ app.use('/api/stock', stockRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
-app.use('/api/customers', customerRoutes);
-app.use('/api/accounts', accountRoutes);
 app.use('/api/godowns', godownRoutes);
 
 // Serve frontend client build if available

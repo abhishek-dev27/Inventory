@@ -1,22 +1,32 @@
 /**
- * 💼 PM2 Enterprise Cluster Configuration
+ * 💼 PM2 Enterprise Production Process Manager Configuration
  * 
- * Run with:
- *   pm2 start ecosystem.config.js
- *   pm2 reload all --update-env (Zero-downtime hot reload)
- *   pm2 monit (Real-time cluster dashboard)
+ * Commands for 24/7 background operation:
+ *   pm2 start ecosystem.config.js --env production
+ *   pm2 save                      (Persists process list across VM reboots)
+ *   pm2 startup                   (Generates system boot service)
+ *   pm2 reload all                (Zero-downtime hot reload)
+ *   pm2 status                    (Check running status)
+ *   pm2 logs                      (Stream live logs)
  */
 
 module.exports = {
   apps: [
     {
-      name: 'inventory-api-cluster',
+      name: 'inventory-system',
       script: './server.js',
-      instances: 'max', // Spawns 1 worker per CPU core
+      instances: 'max',            // Automatically uses all CPU cores
       exec_mode: 'cluster',
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '1G',
+      autorestart: true,           // Auto-restarts immediately if crashed
+      watch: false,                // Disabled in production to prevent unexpected reloads
+      max_memory_restart: '1G',    // Auto-restart if memory leaks exceed 1GB
+      restart_delay: 2000,         // Wait 2s before restarting to prevent rapid thrashing
+      min_uptime: '5s',            // Considered stable if running for at least 5s
+      max_restarts: 30,            // Up to 30 restart attempts
+      exp_backoff_restart_delay: 100,
+      kill_timeout: 5000,
+      wait_ready: true,            // Waits for process.send('ready') from server.js
+      listen_timeout: 10000,       // 10 second timeout for startup
       env: {
         NODE_ENV: 'development',
         PORT: 5000,
@@ -25,10 +35,8 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 5000,
       },
-      exp_backoff_restart_delay: 100,
-      kill_timeout: 4000,
-      wait_ready: true,
-      listen_timeout: 8000,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      merge_logs: true,
     },
   ],
 };

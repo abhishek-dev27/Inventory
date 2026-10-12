@@ -1,48 +1,296 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  FiCamera,
   FiUser,
   FiMapPin,
   FiFileText,
-  FiPhone,
-  FiCheckCircle,
-  FiZap,
+  FiCalendar,
   FiPlus,
-  FiX,
-  FiArrowDownLeft,
+  FiTrash2,
+  FiCamera,
+  FiZap,
+  FiCheckCircle,
+  FiShoppingBag,
   FiLayers,
-  FiTag,
+  FiBox,
+  FiSliders,
   FiSearch,
   FiRefreshCw,
-  FiSliders,
-  FiShield,
-  FiTruck,
-  FiPackage,
-  FiCalendar,
+  FiX,
+  FiEye,
+  FiChevronLeft,
+  FiChevronRight,
+  FiArrowDownLeft,
+  FiPhone,
 } from 'react-icons/fi';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import Modal from '../common/Modal';
 import BarcodeScannerModal from '../common/BarcodeScannerModal';
-import { STOCK_REASONS, SPARE_REASONS } from '../../utils/constants';
+import GodownModal from '../godowns/GodownModal';
+import { STOCK_REASONS, GODOWN_LOCATIONS, REASON_PREFIX_MAP_IN } from '../../utils/constants';
+import { useGodowns } from '../../context/GodownContext';
 import {
   getFinancialYear,
   generateBillNumberForFY,
   getFinancialYearsList,
   formatDateTime,
+  getCurrentLocalDateTime,
 } from '../../utils/formatDate';
 import { stockService } from '../../services/stockService';
+import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 
-const VENDOR_PRESETS = [
-  'Deye Solar Service Hub',
-  'Solis Technical HQ',
-  'Growatt Repair Center',
-  'Havells Warehouse Depot',
-  'Adani Solar Plant',
-  'Rayzon Logistics',
-  'Tata Power Solar',
-  'Luminous Service Center',
+export const CATEGORY_TABS = [
+  { id: 'all', label: 'All Items', icon: FiLayers },
+  {
+    id: 'ongrid',
+    label: '⚡ Ongrid Inverter',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type.includes('ongrid') ||
+        name.includes('ongrid') ||
+        (type.includes('inverter') && !type.includes('hybrid')) ||
+        sku.startsWith('OGI')
+      );
+    },
+  },
+  {
+    id: 'hybrid',
+    label: '🔋 Hybrid Inverter',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type.includes('hybrid') ||
+        cat.includes('hybrid') ||
+        name.includes('hybrid') ||
+        sku.startsWith('HYB')
+      );
+    },
+  },
+  {
+    id: 'panels',
+    label: '☀️ Panels',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type.includes('panel') ||
+        cat.includes('panel') ||
+        cat.includes('module') ||
+        name.includes('panel') ||
+        name.includes('module') ||
+        sku.startsWith('PNL')
+      );
+    },
+  },
+  {
+    id: 'batteries',
+    label: '🔋 Battery',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type.includes('battery') ||
+        cat.includes('batter') ||
+        cat.includes('storage') ||
+        cat.includes('energy storage') ||
+        name.includes('battery') ||
+        name.includes('lifepo4') ||
+        name.includes('lithium') ||
+        name.includes('tubular') ||
+        name.includes('ess') ||
+        sku.startsWith('BAT') ||
+        sku.startsWith('ESS') ||
+        sku.startsWith('LFP')
+      );
+    },
+  },
+  {
+    id: 'acdb',
+    label: '⚡ ACDB',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type.includes('acdb') ||
+        cat.includes('acdb') ||
+        cat.includes('ac distribution') ||
+        name.includes('acdb') ||
+        name.includes('ac distribution') ||
+        sku.startsWith('ACD')
+      );
+    },
+  },
+  {
+    id: 'dcdb',
+    label: '☀️ DCDB',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type.includes('dcdb') ||
+        cat.includes('dcdb') ||
+        cat.includes('dc distribution') ||
+        name.includes('dcdb') ||
+        name.includes('dc distribution') ||
+        sku.startsWith('DCD')
+      );
+    },
+  },
+  {
+    id: 'earthing',
+    label: '🛡️ Earthing Material',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type.includes('earthing') ||
+        cat.includes('earthing') ||
+        cat.includes('grounding') ||
+        name.includes('earthing') ||
+        name.includes('electrode') ||
+        name.includes('gi strip') ||
+        name.includes('copper strip') ||
+        name.includes('compound') ||
+        name.includes('bentonite') ||
+        sku.startsWith('ETH')
+      );
+    },
+  },
+  {
+    id: 'msb',
+    label: '🔌 MSB',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type.includes('msb') ||
+        cat.includes('msb') ||
+        cat.includes('switchgear') ||
+        name.includes('msb') ||
+        name.includes('switch board') ||
+        sku.startsWith('MSB')
+      );
+    },
+  },
+  {
+    id: 'mcb',
+    label: '⚡ MCB',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type === 'mcb' ||
+        type.includes('mcb') ||
+        cat.includes('mcb') ||
+        cat.includes('breaker') ||
+        name.includes('mcb') ||
+        name.includes('circuit breaker') ||
+        sku.startsWith('MCB')
+      );
+    },
+  },
+  {
+    id: 'wires',
+    label: '🧵 Wires',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type.includes('wire') ||
+        cat.includes('cable') ||
+        cat.includes('wire') ||
+        name.includes('wire') ||
+        name.includes('cable') ||
+        sku.startsWith('WIR')
+      );
+    },
+  },
+  {
+    id: 'structure',
+    label: '🏗️ Structure',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type.includes('structure') ||
+        cat.includes('structure') ||
+        name.includes('structure') ||
+        name.includes('rail') ||
+        sku.startsWith('STR')
+      );
+    },
+  },
+  {
+    id: 'consumables',
+    label: '🔩 Consumable',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type.includes('consumable') ||
+        cat.includes('consumable') ||
+        sku.startsWith('CON') ||
+        name.includes('nut') ||
+        name.includes('bolt') ||
+        name.includes('tape') ||
+        name.includes('chemical')
+      );
+    },
+  },
+  {
+    id: 'spares',
+    label: '🛠️ Spare',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toUpperCase();
+      return (
+        type.includes('spare') ||
+        cat.includes('spare') ||
+        sku.startsWith('SPR') ||
+        name.includes('spare')
+      );
+    },
+  },
+  {
+    id: 'other',
+    label: '📦 Other',
+    match: (p) => {
+      const type = (p.productType || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      return type.includes('other') || cat.includes('other');
+    },
+  },
 ];
 
 const StockInForm = ({
@@ -51,38 +299,70 @@ const StockInForm = ({
   loading = false,
   preSelectedProduct = null,
 }) => {
-  const initialDate = new Date().toISOString().slice(0, 16);
+  const { user, isAdmin } = useAuth();
+  const { godownNames } = useGodowns();
+  const activeGodowns = godownNames && godownNames.length > 0 ? godownNames : GODOWN_LOCATIONS;
+  const initialDate = getCurrentLocalDateTime();
   const initialFY = getFinancialYear(initialDate);
 
+  // Auto-update real time for non-admins (editable only by admin)
+  useEffect(() => {
+    if (isAdmin) return;
+    const updateTime = () => {
+      const nowStr = getCurrentLocalDateTime();
+      setBillHeader((prev) => ({
+        ...prev,
+        transactionDate: nowStr,
+      }));
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 5000);
+    return () => clearInterval(timer);
+  }, [isAdmin]);
+
+  // Financial Year & Bill Prefix State
+  const initialReason = 'Invoice';
+  const initialPrefix = REASON_PREFIX_MAP_IN[initialReason] || 'INV';
   const [selectedFY, setSelectedFY] = useState(initialFY);
-  const [inwardPrefix, setInwardPrefix] = useState('INW');
+  const [billPrefix, setBillPrefix] = useState(initialPrefix);
+  const [godownModalOpen, setGodownModalOpen] = useState(false);
   const availableFinancialYears = getFinancialYearsList(6, 3);
 
-  const [formData, setFormData] = useState({
-    productId: preSelectedProduct?.id || '',
-    quantity: '',
-    reason: 'Purchase Order',
+  // 1. Inward Sender & Godown Particulars
+  const [billHeader, setBillHeader] = useState({
     personName: '',
     senderPhone: '',
-    senderAddress: '',
     senderCompany: '',
-    place: '',
-    referenceNo: generateBillNumberForFY(initialFY, [], 'INW'),
-    notes: '',
-    serialNumbers: [],
+    place: 'Ranchi Godown / Bay 1',
+    senderAddress: '',
+    reason: initialReason,
+    customReason: '',
+    referenceNo: generateBillNumberForFY(initialFY, [], initialPrefix),
     transactionDate: initialDate,
+    notes: '',
   });
 
-  // Universal Senders & Vendors Directory State
+  // Category View Mode: 'all' (all 15 categories visible) | 'scroll' (horizontal scrollbar with left/right navigation)
+  const [categoryViewMode, setCategoryViewMode] = useState('all');
+  const categoryScrollRefs = useRef({});
+
+  const handleCategoryScroll = (itemIdx, direction) => {
+    const el = categoryScrollRefs.current[itemIdx];
+    if (el) {
+      el.scrollBy({ left: direction * 260, behavior: 'smooth' });
+    }
+  };
+
+  // Universal Senders & Contacts Directory & Modal State
   const [pastTransactions, setPastTransactions] = useState([]);
-  const [allSendersDirectory, setAllSendersDirectory] = useState([]);
-  const [showSenderDropdown, setShowSenderDropdown] = useState(false);
-  const [isSenderModalOpen, setIsSenderModalOpen] = useState(false);
+  const [allDirectory, setAllDirectory] = useState([]);
+  const [showDirectoryDropdown, setShowDirectoryDropdown] = useState(false);
+  const [isDirectoryModalOpen, setIsDirectoryModalOpen] = useState(false);
   const [modalSearchTerm, setModalSearchTerm] = useState('');
   const [modalFilterTab, setModalFilterTab] = useState('all'); // all, in, out
-  const senderDropdownRef = useRef(null);
+  const directoryDropdownRef = useRef(null);
 
-  // Fetch past transactions & product records for unified sender directory
+  // Fetch all transactions and product senders for universal directory search
   useEffect(() => {
     const loadDirectoryData = async () => {
       try {
@@ -92,62 +372,74 @@ const StockInForm = ({
 
         const list = [];
 
-        // 1. Inward & Outward Transactions
+        // 1. Inward Senders
         txs.forEach((t) => {
-          if (t.personName && t.personName.trim()) {
+          if (t.type === 'in' && t.personName && t.personName.trim()) {
             list.push({
               name: t.personName.trim(),
-              phone: t.senderPhone || '',
+              place: t.senderAddress || t.place || '',
               company: t.senderCompany || '',
-              address: t.senderAddress || '',
-              place: t.place || '',
-              type: t.type === 'in' ? 'Supplier / Inward Sender' : 'Project Client',
-              rawType: t.type || 'in',
-              reason: t.reason || '',
+              type: 'Material Supplier / Sender',
+              rawType: 'in',
+              reason: t.reason,
+              phone: t.senderPhone || '',
               date: t.transactionDate || t.createdAt,
             });
           }
         });
 
-        // 2. Products table senders
+        // 2. Outward Clients
+        txs.forEach((t) => {
+          if (t.type === 'out' && t.personName && t.personName.trim()) {
+            list.push({
+              name: t.personName.trim(),
+              place: t.place || '',
+              type: 'Client / Site Receiver',
+              rawType: 'out',
+              reason: t.reason,
+              phone: t.senderPhone || '',
+              date: t.transactionDate || t.createdAt,
+            });
+          }
+        });
+
+        // 3. Products sender data
         (products || []).forEach((p) => {
           if (p.senderName && p.senderName.trim()) {
             list.push({
               name: p.senderName.trim(),
-              phone: p.senderPhone || '',
+              place: p.senderAddress || p.senderCompany || p.location || '',
               company: p.senderCompany || '',
-              address: p.senderAddress || p.location || '',
-              place: p.location || '',
-              type: 'Material Sender / Spare Vendor',
+              type: 'Vendor / Sender',
               rawType: 'in',
-              reason: p.senderReason || 'Supplier Inward',
+              reason: p.senderReason || 'Inward Restock',
+              phone: p.senderPhone || '',
               date: p.createdAt,
             });
           }
         });
 
-        // Deduplicate records
+        // Deduplicate records by name & place
         const map = {};
         list.forEach((item) => {
-          const key = `${item.name.toLowerCase()}:::${(item.company || '').toLowerCase()}`;
+          const key = `${item.name.toLowerCase()}:::${(item.place || '').toLowerCase()}`;
           if (!map[key]) {
             map[key] = { ...item, count: 1 };
           } else {
             map[key].count += 1;
-            if (item.phone && !map[key].phone) map[key].phone = item.phone;
-            if (item.company && !map[key].company) map[key].company = item.company;
-            if (item.address && !map[key].address) map[key].address = item.address;
-            if (item.place && !map[key].place) map[key].place = item.place;
+            if (item.date && (!map[key].date || new Date(item.date) > new Date(map[key].date))) {
+              map[key].date = item.date;
+            }
           }
         });
 
         const combined = Object.values(map).sort((a, b) => b.count - a.count);
-        setAllSendersDirectory(combined);
+        setAllDirectory(combined);
 
-        // Update referenceNo with accurate sequence
-        setFormData((prev) => ({
+        // Update bill reference with accurate sequence for selected FY from DB
+        setBillHeader((prev) => ({
           ...prev,
-          referenceNo: generateBillNumberForFY(selectedFY, txs, inwardPrefix),
+          referenceNo: generateBillNumberForFY(selectedFY, txs, billPrefix),
         }));
       } catch (err) {
         console.error('Failed to load past transactions', err);
@@ -156,66 +448,109 @@ const StockInForm = ({
     loadDirectoryData();
   }, [products]);
 
-  // Click outside listener for dropdown
+  // Close directory dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (senderDropdownRef.current && !senderDropdownRef.current.contains(e.target)) {
-        setShowSenderDropdown(false);
+      if (directoryDropdownRef.current && !directoryDropdownRef.current.contains(e.target)) {
+        setShowDirectoryDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Handle FY dropdown selection change
   const handleFYChange = (newFY) => {
     setSelectedFY(newFY);
-    const newRef = generateBillNumberForFY(newFY, pastTransactions, inwardPrefix);
-    const dateFY = getFinancialYear(formData.transactionDate);
-    let newDate = formData.transactionDate;
+    const newBillNo = generateBillNumberForFY(newFY, pastTransactions, billPrefix);
+
+    // Sync transactionDate if currently outside the selected FY
+    const dateFY = getFinancialYear(billHeader.transactionDate);
+    let newDate = billHeader.transactionDate;
     if (dateFY !== newFY) {
       const startYear = newFY.split('-')[0];
       newDate = `${startYear}-04-01T10:00`;
     }
-    setFormData((prev) => ({
+
+    setBillHeader((prev) => ({
       ...prev,
-      referenceNo: newRef,
+      referenceNo: newBillNo,
       transactionDate: newDate,
     }));
-    toast.success(`Generated Inward sequence for FY ${newFY}`);
+    toast.success(`Generated Inward Bill Sequence for FY ${newFY}`);
   };
 
+  // Handle Bill Prefix change (e.g. INW, BILL, INV, DC)
   const handlePrefixChange = (newPrefix) => {
-    setInwardPrefix(newPrefix);
-    const newRef = generateBillNumberForFY(selectedFY, pastTransactions, newPrefix);
-    setFormData((prev) => ({ ...prev, referenceNo: newRef }));
-  };
-
-  const handleSelectSender = (sender) => {
-    setFormData((prev) => ({
+    setBillPrefix(newPrefix);
+    const newBillNo = generateBillNumberForFY(selectedFY, pastTransactions, newPrefix);
+    setBillHeader((prev) => ({
       ...prev,
-      personName: sender.name || prev.personName,
-      senderPhone: sender.phone || prev.senderPhone,
-      senderCompany: sender.company || prev.senderCompany,
-      senderAddress: sender.address || prev.senderAddress,
-      place: sender.place || prev.place,
-      reason: sender.reason || prev.reason,
+      referenceNo: newBillNo,
     }));
-    setShowSenderDropdown(false);
-    setIsSenderModalOpen(false);
-    toast.success(`Selected sender: ${sender.name}`);
   };
 
-  const filteredInlineSenders = allSendersDirectory.filter((s) => {
-    const q = (formData.personName || '').toLowerCase().trim();
+  // 2. Multi-Item Inward Bill Array with categoryTab filter per item
+  const [billItems, setBillItems] = useState([
+    {
+      id: Date.now(),
+      categoryTab: 'all',
+      productId: preSelectedProduct?.id ? String(preSelectedProduct.id) : '',
+      quantity: '1',
+      unitRate: preSelectedProduct?.price ? String(preSelectedProduct.price) : '26000',
+      gstRate: '5',
+      selectedSerials: [],
+    },
+  ]);
+
+  const [activeScannerItemIndex, setActiveScannerItemIndex] = useState(null);
+  const [itemSerialInputs, setItemSerialInputs] = useState({});
+  const [errors, setErrors] = useState({});
+
+  const handleHeaderChange = (e) => {
+    const { name, value } = e.target;
+    setBillHeader((prev) => {
+      const updated = { ...prev, [name]: value };
+      if (name === 'reason') {
+        const autoPrefix = REASON_PREFIX_MAP_IN[value] || 'INW';
+        setBillPrefix(autoPrefix);
+        updated.referenceNo = generateBillNumberForFY(selectedFY, pastTransactions, autoPrefix);
+      }
+      if (name === 'transactionDate') {
+        const fy = getFinancialYear(value);
+        setSelectedFY(fy);
+        updated.referenceNo = generateBillNumberForFY(fy, pastTransactions, billPrefix);
+      }
+      return updated;
+    });
+    setErrors((prev) => ({ ...prev, [name]: '' }));
+  };
+
+  const handleSelectDirectory = (cust) => {
+    setBillHeader((prev) => ({
+      ...prev,
+      personName: cust.name || cust.personName,
+      senderAddress: cust.place || prev.senderAddress,
+      senderCompany: cust.company || prev.senderCompany,
+      senderPhone: cust.phone || prev.senderPhone,
+    }));
+    setShowDirectoryDropdown(false);
+    setIsDirectoryModalOpen(false);
+    setErrors((prev) => ({ ...prev, personName: '' }));
+    toast.success(`Selected: ${cust.name || cust.personName}`);
+  };
+
+  const filteredInlineDirectory = allDirectory.filter((c) => {
+    const q = (billHeader.personName || '').toLowerCase().trim();
     if (!q) return true;
     return (
-      s.name.toLowerCase().includes(q) ||
-      (s.company && s.company.toLowerCase().includes(q)) ||
-      (s.place && s.place.toLowerCase().includes(q))
+      c.name.toLowerCase().includes(q) ||
+      (c.company && c.company.toLowerCase().includes(q)) ||
+      (c.place && c.place.toLowerCase().includes(q))
     );
   });
 
-  const filteredModalSenders = allSendersDirectory.filter((item) => {
+  const filteredModalDirectory = allDirectory.filter((item) => {
     if (modalFilterTab === 'in' && item.rawType !== 'in') return false;
     if (modalFilterTab === 'out' && item.rawType !== 'out') return false;
 
@@ -223,111 +558,149 @@ const StockInForm = ({
     if (!term) return true;
     return (
       item.name.toLowerCase().includes(term) ||
-      (item.company && item.company.toLowerCase().includes(term)) ||
       (item.place && item.place.toLowerCase().includes(term)) ||
-      (item.address && item.address.toLowerCase().includes(term)) ||
-      (item.phone && item.phone.toLowerCase().includes(term))
+      (item.company && item.company.toLowerCase().includes(term)) ||
+      (item.phone && item.phone.toLowerCase().includes(term)) ||
+      (item.reason && item.reason.toLowerCase().includes(term))
     );
   });
 
-  const [selectedProd, setSelectedProd] = useState(preSelectedProduct || null);
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [newSerialInput, setNewSerialInput] = useState('');
-  const [inwardCategoryTab, setInwardCategoryTab] = useState('all');
-  const [errors, setErrors] = useState({});
+  const handleItemChange = (index, field, value) => {
+    setBillItems((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
 
-  useEffect(() => {
-    if (preSelectedProduct) {
-      setSelectedProd(preSelectedProduct);
-      setFormData((prev) => ({
-        ...prev,
-        productId: preSelectedProduct.id,
-        place: preSelectedProduct.location || '',
-        senderName: preSelectedProduct.senderName || '',
-        senderPhone: preSelectedProduct.senderPhone || '',
-        senderCompany: preSelectedProduct.senderCompany || '',
-        senderAddress: preSelectedProduct.senderAddress || '',
-        reason: preSelectedProduct.senderReason || 'Purchase Order',
-      }));
-    }
-  }, [preSelectedProduct]);
-
-  const handleProductSelect = (e) => {
-    const pId = parseInt(e.target.value, 10);
-    const prod = products.find((p) => p.id === pId) || null;
-    setSelectedProd(prod);
-    setFormData((prev) => ({
-      ...prev,
-      productId: e.target.value,
-      place: prod?.location || prev.place,
-      personName: prod?.senderName || prev.personName,
-      senderPhone: prod?.senderPhone || prev.senderPhone,
-      senderCompany: prod?.senderCompany || prev.senderCompany,
-      senderAddress: prod?.senderAddress || prev.senderAddress,
-      reason: prod?.senderReason || (prod?.productType === 'Spare' ? 'Warranty Replacement (RMA)' : prev.reason),
-    }));
-    setErrors((prev) => ({ ...prev, productId: '' }));
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => {
-      const updated = { ...prev, [name]: value };
-      if (name === 'transactionDate') {
-        const fy = getFinancialYear(value);
-        setSelectedFY(fy);
-        updated.referenceNo = generateBillNumberForFY(fy, pastTransactions, inwardPrefix);
+      if (field === 'productId') {
+        const prod = products.find((p) => p.id === parseInt(value, 10));
+        if (prod) {
+          if (!updated[index].unitRate || updated[index].unitRate === '26000') {
+            updated[index].unitRate = prod.price ? String(prod.price) : '26000';
+          }
+        }
       }
       return updated;
     });
-    setErrors((prev) => ({ ...prev, [name]: '' }));
+    setErrors((prev) => ({ ...prev, [`item_${index}_${field}`]: '' }));
   };
 
-  const handleAddDirectSerial = () => {
-    const trimmed = newSerialInput.trim();
-    if (!trimmed) return;
-    if (formData.serialNumbers.includes(trimmed)) {
-      toast.error('Serial number already added in this batch');
+  const handleItemCategoryTab = (index, tabId) => {
+    setBillItems((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], categoryTab: tabId };
+      return updated;
+    });
+  };
+
+  const handleAddItem = () => {
+    setBillItems((prev) => [
+      ...prev,
+      {
+        id: Date.now() + Math.random(),
+        categoryTab: 'all',
+        productId: '',
+        quantity: '1',
+        unitRate: '',
+        gstRate: '5',
+        selectedSerials: [],
+      },
+    ]);
+  };
+
+  const handleRemoveItem = (index) => {
+    if (billItems.length === 1) {
+      toast.error('Inward bill must contain at least one item');
       return;
     }
-    const updated = [...formData.serialNumbers, trimmed];
-    setFormData((prev) => ({
-      ...prev,
-      serialNumbers: updated,
-      quantity: String(updated.length),
-    }));
-    setNewSerialInput('');
-    toast.success(`Added serial: ${trimmed}`);
+    setBillItems((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleAddDirectSerialToItem = (itemIndex) => {
+    const currentVal = (itemSerialInputs[itemIndex] || '').trim();
+    if (!currentVal) return;
+
+    const currentItem = billItems[itemIndex];
+    const currentSerials = currentItem?.selectedSerials || [];
+    if (currentSerials.includes(currentVal)) {
+      toast.error('Serial number already added in this item');
+      return;
+    }
+
+    const newSerials = [...currentSerials, currentVal];
+    setBillItems((prev) => {
+      const updated = [...prev];
+      updated[itemIndex] = {
+        ...updated[itemIndex],
+        selectedSerials: newSerials,
+        quantity: String(Math.max(newSerials.length, parseInt(updated[itemIndex].quantity, 10) || 1)),
+      };
+      return updated;
+    });
+
+    setItemSerialInputs((prev) => ({ ...prev, [itemIndex]: '' }));
+    toast.success(`Captured serial: ${currentVal}`);
+  };
+
+  const handleRemoveItemSerial = (itemIndex, serialIdx) => {
+    setBillItems((prev) => {
+      const updated = [...prev];
+      const currentSerials = updated[itemIndex]?.selectedSerials || [];
+      const newSerials = currentSerials.filter((_, idx) => idx !== serialIdx);
+      updated[itemIndex] = {
+        ...updated[itemIndex],
+        selectedSerials: newSerials,
+        quantity: newSerials.length > 0 ? String(newSerials.length) : updated[itemIndex].quantity,
+      };
+      return updated;
+    });
   };
 
   const handleAddScannedSerials = (scannedList) => {
-    const unique = Array.from(new Set([...formData.serialNumbers, ...scannedList]));
-    setFormData((prev) => ({
-      ...prev,
-      serialNumbers: unique,
-      quantity: String(unique.length),
-    }));
-    toast.success(`Synced ${unique.length} serial number(s)`);
-  };
+    if (activeScannerItemIndex === null) return;
+    const item = billItems[activeScannerItemIndex];
+    if (!item) return;
 
-  const handleRemoveSerial = (index) => {
-    const updated = formData.serialNumbers.filter((_, idx) => idx !== index);
-    setFormData((prev) => ({
-      ...prev,
-      serialNumbers: updated,
-      quantity: updated.length > 0 ? String(updated.length) : prev.quantity,
-    }));
+    setBillItems((prev) => {
+      const updated = [...prev];
+      const currentSerials = updated[activeScannerItemIndex].selectedSerials || [];
+      const merged = Array.from(new Set([...currentSerials, ...scannedList]));
+      updated[activeScannerItemIndex] = {
+        ...updated[activeScannerItemIndex],
+        selectedSerials: merged,
+        quantity: String(Math.max(merged.length, parseInt(updated[activeScannerItemIndex].quantity, 10) || 1)),
+      };
+      return updated;
+    });
+
+    toast.success(`Captured ${scannedList.length} serial(s)`);
   };
 
   const validate = () => {
     const errs = {};
-    if (!formData.productId) errs.productId = 'Please select a product';
-    const qty = parseInt(formData.quantity, 10);
-    if (!formData.quantity || isNaN(qty) || qty <= 0) {
-      errs.quantity = 'Quantity must be at least 1';
+    if (!billHeader.personName?.trim()) {
+      errs.personName = 'Sender / Representative name is required';
     }
-    if (!formData.reason) errs.reason = 'Please select a reason';
+    if (!billHeader.place?.trim()) {
+      errs.place = 'Receiving godown / warehouse location is required';
+    }
+    if (billHeader.reason === 'Other' && !billHeader.customReason?.trim()) {
+      errs.customReason = 'Please specify custom reason';
+    }
+
+    billItems.forEach((item, idx) => {
+      if (!item.productId) {
+        errs[`item_${idx}_productId`] = 'Select an equipment item';
+      } else {
+        const qty = parseInt(item.quantity, 10);
+        if (!item.quantity || isNaN(qty) || qty <= 0) {
+          errs[`item_${idx}_quantity`] = 'Quantity must be at least 1';
+        }
+      }
+    });
+
     setErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      toast.error('Please fix the highlighted fields in the inward bill');
+    }
     return Object.keys(errs).length === 0;
   };
 
@@ -335,615 +708,48 @@ const StockInForm = ({
     e.preventDefault();
     if (!validate()) return;
 
-    onSubmit({
-      productId: parseInt(formData.productId, 10),
-      quantity: parseInt(formData.quantity, 10),
-      personName: formData.personName.trim(),
-      senderPhone: formData.senderPhone.trim(),
-      senderAddress: formData.senderAddress.trim(),
-      senderCompany: formData.senderCompany.trim(),
-      place: formData.place.trim(),
-      referenceNo: formData.referenceNo.trim(),
-      serialNumbers: formData.serialNumbers || [],
-      transactionDate: formData.transactionDate
-        ? new Date(formData.transactionDate).toISOString()
+    const finalReason =
+      billHeader.reason === 'Other' && billHeader.customReason.trim()
+        ? billHeader.customReason.trim()
+        : billHeader.reason;
+
+    const payload = {
+      personName: billHeader.personName.trim(),
+      senderPhone: billHeader.senderPhone?.trim() || '',
+      senderCompany: billHeader.senderCompany?.trim() || '',
+      place: billHeader.place.trim(),
+      senderAddress: billHeader.senderAddress?.trim() || '',
+      reason: finalReason,
+      referenceNo: billHeader.referenceNo.trim(),
+      transactionDate: !isAdmin
+        ? new Date().toISOString()
+        : billHeader.transactionDate
+        ? new Date(billHeader.transactionDate).toISOString()
         : new Date().toISOString(),
-      reason: formData.reason,
-      notes: formData.notes.trim(),
-    });
+      notes: billHeader.notes?.trim() || '',
+      items: billItems.map((item) => ({
+        productId: parseInt(item.productId, 10),
+        quantity: parseInt(item.quantity, 10),
+        unitRate: parseFloat(item.unitRate) || 0,
+        gstRate: parseFloat(item.gstRate) || 5,
+        serialNumbers: item.selectedSerials || [],
+      })),
+    };
+
+    onSubmit(payload);
   };
 
-  const unit = selectedProd?.unit || 'pcs';
-  const isSpare = selectedProd?.productType === 'Spare';
+  const totalUnits = billItems.reduce((sum, item) => sum + (parseInt(item.quantity, 10) || 0), 0);
+  const totalSerials = billItems.reduce((sum, item) => sum + (item.selectedSerials?.length || 0), 0);
+
+  const activeScannerProd =
+    activeScannerItemIndex !== null
+      ? products.find((p) => p.id === parseInt(billItems[activeScannerItemIndex]?.productId, 10))
+      : null;
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* 1. PRODUCT SELECTION & QUANTITY CARD */}
-      <div
-        style={{
-          backgroundColor: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: '16px',
-          padding: '24px',
-          boxShadow: 'var(--shadow-sm)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '18px' }}>
-          <div
-            style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(108, 92, 231, 0.12)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--primary-light)',
-            }}
-          >
-            <FiLayers size={16} />
-          </div>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-            1. Material Identification & Quantity
-          </h3>
-        </div>
-
-        {/* DEDICATED CATEGORY TABS (Single-Row Horizontal Scroll) */}
-        <div style={{ marginBottom: '14px' }}>
-          <label
-            style={{
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              color: 'var(--text-secondary)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.03em',
-              display: 'block',
-              marginBottom: '6px',
-            }}
-          >
-            Filter Inward Material by Category Tab:
-          </label>
-
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '6px',
-              marginBottom: '10px',
-            }}
-          >
-            {[
-              {
-                id: 'all',
-                label: 'All Items',
-              },
-              {
-                id: 'ongrid',
-                label: '⚡ Ongrid Inverter',
-                match: (p) => {
-                  const type = (p.productType || '').toLowerCase();
-                  const cat = (p.category || '').toLowerCase();
-                  const name = (p.name || '').toLowerCase();
-                  const sku = (p.sku || '').toUpperCase();
-                  return (
-                    type.includes('ongrid') ||
-                    name.includes('ongrid') ||
-                    (type.includes('inverter') && !type.includes('hybrid')) ||
-                    sku.startsWith('OGI')
-                  );
-                },
-              },
-              {
-                id: 'hybrid',
-                label: '🔋 Hybrid Inverter',
-                match: (p) => {
-                  const type = (p.productType || '').toLowerCase();
-                  const cat = (p.category || '').toLowerCase();
-                  const name = (p.name || '').toLowerCase();
-                  const sku = (p.sku || '').toUpperCase();
-                  return (
-                    type.includes('hybrid') ||
-                    cat.includes('hybrid') ||
-                    name.includes('hybrid') ||
-                    sku.startsWith('HYB')
-                  );
-                },
-              },
-              {
-                id: 'panels',
-                label: '☀️ Panels',
-                match: (p) => {
-                  const type = (p.productType || '').toLowerCase();
-                  const cat = (p.category || '').toLowerCase();
-                  const name = (p.name || '').toLowerCase();
-                  const sku = (p.sku || '').toUpperCase();
-                  return (
-                    type.includes('panel') ||
-                    cat.includes('panel') ||
-                    cat.includes('module') ||
-                    name.includes('panel') ||
-                    name.includes('module') ||
-                    sku.startsWith('PNL')
-                  );
-                },
-              },
-              {
-                id: 'batteries',
-                label: '🔋 Battery',
-                match: (p) => {
-                  const type = (p.productType || '').toLowerCase();
-                  const cat = (p.category || '').toLowerCase();
-                  const name = (p.name || '').toLowerCase();
-                  const sku = (p.sku || '').toUpperCase();
-                  return (
-                    type.includes('battery') ||
-                    cat.includes('batter') ||
-                    cat.includes('storage') ||
-                    name.includes('battery') ||
-                    name.includes('lifepo4') ||
-                    name.includes('lithium') ||
-                    name.includes('tubular') ||
-                    sku.startsWith('BAT') ||
-                    sku.startsWith('ESS') ||
-                    sku.startsWith('LFP')
-                  );
-                },
-              },
-              {
-                id: 'acdb',
-                label: '⚡ ACDB',
-                match: (p) => {
-                  const type = (p.productType || '').toLowerCase();
-                  const cat = (p.category || '').toLowerCase();
-                  const name = (p.name || '').toLowerCase();
-                  const sku = (p.sku || '').toUpperCase();
-                  return (
-                    type === 'acdb' ||
-                    type.includes('acdb') ||
-                    cat.includes('acdb') ||
-                    name.includes('acdb') ||
-                    name.includes('ac distribution') ||
-                    sku.startsWith('ACD')
-                  );
-                },
-              },
-              {
-                id: 'dcdb',
-                label: '☀️ DCDB',
-                match: (p) => {
-                  const type = (p.productType || '').toLowerCase();
-                  const cat = (p.category || '').toLowerCase();
-                  const name = (p.name || '').toLowerCase();
-                  const sku = (p.sku || '').toUpperCase();
-                  return (
-                    type === 'dcdb' ||
-                    type.includes('dcdb') ||
-                    cat.includes('dcdb') ||
-                    name.includes('dcdb') ||
-                    name.includes('array junction') ||
-                    sku.startsWith('DCD')
-                  );
-                },
-              },
-              {
-                id: 'earthing',
-                label: '🛡️ Earthing Material',
-                match: (p) => {
-                  const type = (p.productType || '').toLowerCase();
-                  const cat = (p.category || '').toLowerCase();
-                  const name = (p.name || '').toLowerCase();
-                  const sku = (p.sku || '').toUpperCase();
-                  return (
-                    type.includes('earthing') ||
-                    cat.includes('earthing') ||
-                    cat.includes('lightning') ||
-                    name.includes('earthing') ||
-                    name.includes('earth rod') ||
-                    name.includes('chemical rod') ||
-                    name.includes('lightning arrester') ||
-                    sku.startsWith('ETH')
-                  );
-                },
-              },
-              {
-                id: 'msb',
-                label: '🔌 MSB',
-                match: (p) => {
-                  const type = (p.productType || '').toLowerCase();
-                  const cat = (p.category || '').toLowerCase();
-                  const name = (p.name || '').toLowerCase();
-                  const sku = (p.sku || '').toUpperCase();
-                  return (
-                    type.includes('msb') ||
-                    cat.includes('msb') ||
-                    cat.includes('switchgear') ||
-                    name.includes('msb') ||
-                    sku.startsWith('MSB')
-                  );
-                },
-              },
-              {
-                id: 'mcb',
-                label: '⚡ MCB',
-                match: (p) => {
-                  const type = (p.productType || '').toLowerCase();
-                  const cat = (p.category || '').toLowerCase();
-                  const name = (p.name || '').toLowerCase();
-                  const sku = (p.sku || '').toUpperCase();
-                  return (
-                    type === 'mcb' ||
-                    type.includes('mcb') ||
-                    cat.includes('mcb') ||
-                    cat.includes('breaker') ||
-                    name.includes('mcb') ||
-                    name.includes('circuit breaker') ||
-                    sku.startsWith('MCB')
-                  );
-                },
-              },
-              {
-                id: 'wires',
-                label: '🧵 Wires',
-                match: (p) => {
-                  const type = (p.productType || '').toLowerCase();
-                  const cat = (p.category || '').toLowerCase();
-                  const name = (p.name || '').toLowerCase();
-                  const sku = (p.sku || '').toUpperCase();
-                  return (
-                    type.includes('wire') ||
-                    cat.includes('cable') ||
-                    cat.includes('wire') ||
-                    name.includes('wire') ||
-                    sku.startsWith('WIR')
-                  );
-                },
-              },
-              {
-                id: 'structure',
-                label: '🏗️ Structure',
-                match: (p) => {
-                  const type = (p.productType || '').toLowerCase();
-                  const cat = (p.category || '').toLowerCase();
-                  const name = (p.name || '').toLowerCase();
-                  const sku = (p.sku || '').toUpperCase();
-                  return (
-                    type.includes('structure') ||
-                    cat.includes('structure') ||
-                    sku.startsWith('STR')
-                  );
-                },
-              },
-              {
-                id: 'consumables',
-                label: '🔩 Consumable',
-                match: (p) => {
-                  const type = (p.productType || '').toLowerCase();
-                  const cat = (p.category || '').toLowerCase();
-                  const name = (p.name || '').toLowerCase();
-                  const sku = (p.sku || '').toUpperCase();
-                  return (
-                    type.includes('consumable') ||
-                    cat.includes('consumable') ||
-                    sku.startsWith('CON') ||
-                    name.includes('nut') ||
-                    name.includes('bolt') ||
-                    name.includes('tape') ||
-                    name.includes('chemical')
-                  );
-                },
-              },
-              {
-                id: 'spares',
-                label: '🛠️ Spare',
-                match: (p) => {
-                  const type = (p.productType || '').toLowerCase();
-                  const cat = (p.category || '').toLowerCase();
-                  const name = (p.name || '').toLowerCase();
-                  const sku = (p.sku || '').toUpperCase();
-                  return (
-                    type.includes('spare') ||
-                    cat.includes('spare') ||
-                    sku.startsWith('SPR') ||
-                    name.includes('spare')
-                  );
-                },
-              },
-              {
-                id: 'other',
-                label: '📦 Other',
-                match: (p) => {
-                  const type = (p.productType || '').toLowerCase();
-                  const cat = (p.category || '').toLowerCase();
-                  const name = (p.name || '').toLowerCase();
-                  return type.includes('other') || cat.includes('other');
-                },
-              },
-            ].map((tab) => {
-              const isActive = (inwardCategoryTab || 'all') === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => {
-                    setInwardCategoryTab(tab.id);
-                    // Reset selected product if not in this tab
-                    if (tab.id !== 'all' && selectedProd && tab.match && !tab.match(selectedProd)) {
-                      setFormData((prev) => ({ ...prev, productId: '' }));
-                      setSelectedProd(null);
-                    }
-                  }}
-                  style={{
-                    padding: '5px 12px',
-                    borderRadius: '8px',
-                    fontSize: '0.76rem',
-                    fontWeight: isActive ? 800 : 600,
-                    border: isActive
-                      ? '1px solid var(--primary-light)'
-                      : '1px solid var(--border)',
-                    backgroundColor: isActive ? 'var(--primary)' : 'var(--surface)',
-                    color: isActive ? '#ffffff' : 'var(--text-secondary)',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    transition: 'all var(--transition-fast)',
-                    boxShadow: isActive ? '0 2px 6px rgba(108, 92, 231, 0.25)' : 'none',
-                  }}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div style={{ marginBottom: '18px' }}>
-          {(() => {
-            const INWARD_TABS = [
-              { id: 'inverters', match: (p) => (p.productType || '').toLowerCase().includes('inverter') || (p.category || '').toLowerCase().includes('inverter') || (p.name || '').toLowerCase().includes('inverter') || (p.sku || '').toUpperCase().startsWith('OGI') || (p.sku || '').toUpperCase().startsWith('HYB') },
-              { id: 'panels', match: (p) => (p.productType || '').toLowerCase().includes('panel') || (p.category || '').toLowerCase().includes('panel') || (p.category || '').toLowerCase().includes('module') || (p.name || '').toLowerCase().includes('panel') || (p.sku || '').toUpperCase().startsWith('PNL') },
-              { id: 'mcb', match: (p) => (p.productType || '').toLowerCase() === 'mcb' || (p.productType || '').toLowerCase().includes('mcb') || (p.category || '').toLowerCase().includes('mcb') || (p.category || '').toLowerCase().includes('breaker') || (p.name || '').toLowerCase().includes('mcb') || (p.sku || '').toUpperCase().startsWith('MCB') },
-              { id: 'msb', match: (p) => (p.productType || '').toLowerCase().includes('msb') || (p.category || '').toLowerCase().includes('msb') || (p.category || '').toLowerCase().includes('switchgear') || (p.name || '').toLowerCase().includes('msb') || (p.sku || '').toUpperCase().startsWith('MSB') },
-              { id: 'wires', match: (p) => (p.productType || '').toLowerCase().includes('wire') || (p.category || '').toLowerCase().includes('cable') || (p.category || '').toLowerCase().includes('wire') || (p.name || '').toLowerCase().includes('wire') || (p.sku || '').toUpperCase().startsWith('WIR') },
-              { id: 'structure', match: (p) => (p.productType || '').toLowerCase().includes('structure') || (p.category || '').toLowerCase().includes('structure') || (p.sku || '').toUpperCase().startsWith('STR') },
-              { id: 'consumables', match: (p) => (p.productType || '').toLowerCase().includes('consumable') || (p.category || '').toLowerCase().includes('consumable') || (p.sku || '').toUpperCase().startsWith('CON') || (p.name || '').toLowerCase().includes('nut') || (p.name || '').toLowerCase().includes('bolt') || (p.name || '').toLowerCase().includes('tape') || (p.name || '').toLowerCase().includes('chemical') },
-              { id: 'batteries', match: (p) => (p.productType || '').toLowerCase().includes('battery') || (p.category || '').toLowerCase().includes('batter') || (p.category || '').toLowerCase().includes('storage') || (p.name || '').toLowerCase().includes('battery') || (p.name || '').toLowerCase().includes('lifepo4') || (p.name || '').toLowerCase().includes('lithium') || (p.name || '').toLowerCase().includes('tubular') || (p.sku || '').toUpperCase().startsWith('BAT') || (p.sku || '').toUpperCase().startsWith('ESS') || (p.sku || '').toUpperCase().startsWith('LFP') },
-              { id: 'spares', match: (p) => (p.productType || '').toLowerCase().includes('spare') || (p.category || '').toLowerCase().includes('spare') || (p.sku || '').toUpperCase().startsWith('SPR') || (p.name || '').toLowerCase().includes('spare') },
-            ];
-
-            const activeTabObj = INWARD_TABS.find((t) => t.id === inwardCategoryTab);
-            const filteredInward = !inwardCategoryTab || inwardCategoryTab === 'all'
-              ? products
-              : products.filter((p) => Boolean(activeTabObj?.match && activeTabObj.match(p)));
-
-            return (
-              <Input
-                as="select"
-                label={`Select Inward Product / Spare Item (${filteredInward.length} in category)`}
-                name="productId"
-                value={formData.productId}
-                onChange={handleProductSelect}
-                error={errors.productId}
-                disabled={loading || !!preSelectedProduct}
-                required
-              >
-                <option value="">
-                  {filteredInward.length === 0
-                    ? '-- No products found in this category --'
-                    : `-- Choose Product / Material (${filteredInward.length} available) --`}
-                </option>
-                {filteredInward.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    [{p.productType || 'Product'}] {p.name} (ID: {p.sku}) {p.brand ? `• ${p.brand}` : ''} {p.capacity ? `(${p.capacity})` : ''} {p.phase ? `[${p.phase}]` : ''} {p.dcrType ? `[${p.dcrType}]` : ''} — Available: {p.quantity} {p.unit || 'pcs'}
-                  </option>
-                ))}
-              </Input>
-            );
-          })()}
-        </div>
-
-        {/* Selected Product Specs Pill Banner */}
-        {selectedProd && (
-          <div
-            style={{
-              background: 'var(--bg-secondary)',
-              border: '1px solid var(--border)',
-              borderRadius: '12px',
-              padding: '14px 18px',
-              marginBottom: '18px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '10px',
-            }}
-          >
-            <div>
-              <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
-                {selectedProd.name}
-              </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <span>SKU: {selectedProd.sku}</span>
-                <span>•</span>
-                <span>Type: {selectedProd.productType || selectedProd.category}</span>
-                {selectedProd.brand && (
-                  <>
-                    <span>•</span>
-                    <span>Brand: {selectedProd.brand}</span>
-                  </>
-                )}
-                {selectedProd.capacity && (
-                  <>
-                    <span>•</span>
-                    <span>Rating: {selectedProd.capacity}</span>
-                  </>
-                )}
-              </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Current Stock</span>
-              <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--success)' }}>
-                {selectedProd.quantity} {unit}
-              </span>
-            </div>
-          </div>
-        )}
-
-        <div className="form-grid">
-          <Input
-            label={`Inward Quantity (${unit})`}
-            name="quantity"
-            type="number"
-            min="1"
-            placeholder="e.g. 10"
-            value={formData.quantity}
-            onChange={handleChange}
-            error={errors.quantity}
-            helperText={formData.serialNumbers?.length > 0 ? `Synced with ${formData.serialNumbers.length} scanned serials` : `Enter number of ${unit} received`}
-            required
-          />
-
-          <Input
-            as="select"
-            label="Inward Receipt Reason"
-            name="reason"
-            value={formData.reason}
-            onChange={handleChange}
-            error={errors.reason}
-            required
-          >
-            <optgroup label="Standard Inward Reasons">
-              {STOCK_REASONS.in.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </optgroup>
-            {isSpare && (
-              <optgroup label="Spare & Warranty Reasons">
-                {SPARE_REASONS.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-          </Input>
-        </div>
-      </div>
-
-      {/* 2. SERIAL NUMBERS & BARCODE SCANNER CARD */}
-      <div
-        style={{
-          backgroundColor: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: '16px',
-          padding: '24px',
-          boxShadow: 'var(--shadow-sm)',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div
-              style={{
-                width: '28px',
-                height: '28px',
-                borderRadius: '8px',
-                backgroundColor: 'rgba(16, 185, 129, 0.12)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--success)',
-              }}
-            >
-              <FiCamera size={16} />
-            </div>
-            <div>
-              <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                2. Unit Serial Numbers ({formData.serialNumbers?.length || 0})
-              </h3>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Scan barcodes or enter individual unit serials
-              </span>
-            </div>
-          </div>
-
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            icon={FiCamera}
-            onClick={() => setIsScannerOpen(true)}
-          >
-            Scan Barcode / QR
-          </Button>
-        </div>
-
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-          <div style={{ flex: 1 }}>
-            <Input
-              placeholder="Type Serial Number and press Enter..."
-              value={newSerialInput}
-              onChange={(e) => setNewSerialInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleAddDirectSerial();
-                }
-              }}
-            />
-          </div>
-          <Button type="button" variant="secondary" icon={FiPlus} onClick={handleAddDirectSerial}>
-            Add SN
-          </Button>
-        </div>
-
-        {formData.serialNumbers?.length > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '6px',
-              maxHeight: '120px',
-              overflowY: 'auto',
-              padding: '10px',
-              backgroundColor: 'var(--bg-secondary)',
-              borderRadius: '10px',
-              border: '1px solid var(--border)',
-            }}
-          >
-            {formData.serialNumbers.map((sn, idx) => (
-              <span
-                key={idx}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  backgroundColor: 'var(--surface)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text-primary)',
-                  padding: '3px 8px',
-                  borderRadius: '6px',
-                  fontSize: '0.78rem',
-                  fontFamily: 'ui-monospace, monospace',
-                  fontWeight: 600,
-                }}
-              >
-                <FiZap size={11} color="var(--primary-light)" />
-                <span>{sn}</span>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveSerial(idx)}
-                  style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 0 }}
-                  title="Remove Serial"
-                >
-                  <FiX size={12} />
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 3. SENDER PARTICULARS & HANDOVER CARD */}
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+      {/* 1. SENDER & RECEIVING GODOWN PARTICULARS (MATCHING STOCK OUT APPEARANCE) */}
       <div
         style={{
           backgroundColor: 'var(--surface)',
@@ -960,331 +766,515 @@ const StockInForm = ({
                 width: '36px',
                 height: '36px',
                 borderRadius: '10px',
-                backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                backgroundColor: 'rgba(108, 92, 231, 0.12)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#d97706',
+                color: 'var(--primary-light)',
               }}
             >
-              <FiUser size={18} />
+              <FiUser size={20} />
             </div>
             <div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-                3. Sender Particulars & Handover Details
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                1. Sender Particulars & Receiving Godown Details
               </h3>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Source engineer, vendor details, and destination storage rack with FY auto-reference
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Record supplier particulars, destination storage godown, financial year sequence, and inward movement details
               </span>
             </div>
           </div>
 
+          {/* Quick Universal Directory Search Button */}
           <Button
             type="button"
             variant="secondary"
             size="sm"
             icon={FiSearch}
-            onClick={() => setIsSenderModalOpen(true)}
+            onClick={() => setIsDirectoryModalOpen(true)}
             style={{ fontWeight: 600 }}
           >
-            Search All Senders & Vendors ({allSendersDirectory.length})
+            Search All Senders & Vendors ({allDirectory.length})
           </Button>
         </div>
 
-        <div className="form-grid">
-          {/* Sender Person with Fast Inline Dropdown */}
-          <div style={{ position: 'relative' }} ref={senderDropdownRef}>
+        {/* 1A. SIDE-BY-SIDE: SENDER (LEFT) & RECEIVING GODOWN (RIGHT) */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '16px',
+            marginBottom: '18px',
+          }}
+        >
+          {/* Card A: SENDER / VENDOR PARTICULARS */}
+          <div
+            style={{
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--border)',
+              borderRadius: '12px',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            }}
+          >
             <div
               style={{
+                fontSize: '0.8rem',
+                fontWeight: 800,
+                color: '#1e3a8a',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
                 display: 'flex',
-                justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '6px',
+                gap: '6px',
+                borderBottom: '1px solid var(--border)',
+                paddingBottom: '8px',
               }}
             >
-              <label
+              <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#1e3a8a' }}></span>
+              <span>🏢 Sender / Supplier / Vendor Details</span>
+            </div>
+
+            {/* Sender Person Name with inline directory dropdown */}
+            <div style={{ position: 'relative' }} ref={directoryDropdownRef}>
+              <div
                 style={{
-                  fontSize: '0.8125rem',
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '6px',
                 }}
               >
-                Name of Sender Person / Representative
-              </label>
-              {allSendersDirectory.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowSenderDropdown((prev) => !prev)}
+                <label
                   style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--primary-light)',
-                    fontSize: '0.75rem',
+                    fontSize: '0.8125rem',
                     fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
+                    color: 'var(--text-primary)',
                   }}
                 >
-                  <FiSearch size={12} />
-                  {showSenderDropdown
-                    ? 'Hide List'
-                    : `Browse ${allSendersDirectory.length} Senders`}
-                </button>
+                  Name of Sender Person / Representative <span style={{ color: 'var(--danger)' }}>*</span>
+                </label>
+                {allDirectory.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDirectoryDropdown((prev) => !prev)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--primary-light)',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <FiSearch size={11} />
+                    {showDirectoryDropdown ? 'Hide' : `Directory (${allDirectory.length})`}
+                  </button>
+                )}
+              </div>
+
+              <Input
+                icon={FiUser}
+                name="personName"
+                placeholder="e.g. Rajesh Kumar (Service Engineer)"
+                value={billHeader.personName}
+                onFocus={() => {
+                  if (allDirectory.length > 0) setShowDirectoryDropdown(true);
+                }}
+                onChange={(e) => {
+                  handleHeaderChange(e);
+                  setShowDirectoryDropdown(true);
+                }}
+                error={errors.personName}
+                helperText="Type sender name or pick from previous inward history"
+                required
+              />
+
+              {/* Fast Inline Suggestions Popover */}
+              {showDirectoryDropdown && allDirectory.length > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% - 14px)',
+                    left: 0,
+                    right: 0,
+                    backgroundColor: 'var(--bg-secondary)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '12px',
+                    boxShadow: 'var(--shadow-lg, 0 12px 28px rgba(0, 0, 0, 0.25))',
+                    maxHeight: '260px',
+                    overflowY: 'auto',
+                    zIndex: 100,
+                    padding: '6px',
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: '8px 10px',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      color: 'var(--text-muted)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      borderBottom: '1px solid var(--border)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <span>Select from Past Records ({filteredInlineDirectory.length})</span>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowDirectoryDropdown(false);
+                          setIsDirectoryModalOpen(true);
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--primary-light)',
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Open Full Directory
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowDirectoryDropdown(false)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-muted)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <FiX size={13} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {filteredInlineDirectory.length === 0 ? (
+                    <div
+                      style={{
+                        padding: '14px',
+                        textAlign: 'center',
+                        fontSize: '0.8125rem',
+                        color: 'var(--text-muted)',
+                      }}
+                    >
+                      No matching record found
+                    </div>
+                  ) : (
+                    filteredInlineDirectory.map((cust, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => handleSelectDirectory(cust)}
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '10px',
+                          transition: 'background 0.15s ease',
+                        }}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.backgroundColor = 'var(--surface)')
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.backgroundColor = 'transparent')
+                        }
+                      >
+                        <div>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              fontSize: '0.875rem',
+                              color: 'var(--text-primary)',
+                            }}
+                          >
+                            {cust.name} {cust.company ? `(${cust.company})` : ''}
+                          </div>
+                          {cust.place && (
+                            <div
+                              style={{
+                                fontSize: '0.75rem',
+                                color: 'var(--text-muted)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                marginTop: '2px',
+                              }}
+                            >
+                              <FiMapPin size={11} color="var(--primary-light)" /> {cust.place}
+                            </div>
+                          )}
+                        </div>
+                        <span
+                          style={{
+                            fontSize: '0.6875rem',
+                            fontWeight: 700,
+                            backgroundColor:
+                              cust.rawType === 'in'
+                                ? 'rgba(16, 185, 129, 0.12)'
+                                : 'rgba(108, 92, 231, 0.12)',
+                            color:
+                              cust.rawType === 'in'
+                                ? 'var(--success)'
+                                : 'var(--primary-light)',
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {cust.type}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
               )}
             </div>
 
-            <Input
-              name="personName"
-              placeholder="e.g. Rajesh Kumar (Service Engineer)"
-              value={formData.personName}
-              onFocus={() => {
-                if (allSendersDirectory.length > 0) setShowSenderDropdown(true);
-              }}
-              onChange={(e) => {
-                handleChange(e);
-                setShowSenderDropdown(true);
-              }}
-              icon={FiUser}
-              helperText="Type sender name or pick from previous inward history"
-            />
-
-            {/* Inline Suggestions Popover */}
-            {showSenderDropdown && allSendersDirectory.length > 0 && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 'calc(100% - 14px)',
-                  left: 0,
-                  right: 0,
-                  backgroundColor: 'var(--bg-secondary)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '12px',
-                  boxShadow: 'var(--shadow-lg, 0 12px 28px rgba(0, 0, 0, 0.25))',
-                  maxHeight: '260px',
-                  overflowY: 'auto',
-                  zIndex: 100,
-                  padding: '6px',
-                }}
-              >
-                <div
-                  style={{
-                    padding: '8px 10px',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    color: 'var(--text-muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    borderBottom: '1px solid var(--border)',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <span>Select Sender ({filteredInlineSenders.length})</span>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowSenderDropdown(false);
-                        setIsSenderModalOpen(true);
-                      }}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--primary-light)',
-                        fontSize: '0.7rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Open Full Directory
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowSenderDropdown(false)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--text-muted)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <FiX size={13} />
-                    </button>
-                  </div>
-                </div>
-
-                {filteredInlineSenders.length === 0 ? (
-                  <div
-                    style={{
-                      padding: '14px',
-                      textAlign: 'center',
-                      fontSize: '0.8125rem',
-                      color: 'var(--text-muted)',
-                    }}
-                  >
-                    No matching sender found (entering as new name)
-                  </div>
-                ) : (
-                  filteredInlineSenders.map((s, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => handleSelectSender(s)}
-                      style={{
-                        padding: '10px 12px',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '10px',
-                        transition: 'background 0.15s ease',
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor = 'var(--surface)')
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor = 'transparent')
-                      }
-                    >
-                      <div>
-                        <div
-                          style={{
-                            fontWeight: 600,
-                            fontSize: '0.875rem',
-                            color: 'var(--text-primary)',
-                          }}
-                        >
-                          {s.name}
-                        </div>
-                        {(s.company || s.phone) && (
-                          <div
-                            style={{
-                              fontSize: '0.75rem',
-                              color: 'var(--text-muted)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              marginTop: '2px',
-                            }}
-                          >
-                            {s.company && <span>🏢 {s.company}</span>}
-                            {s.phone && <span>📞 {s.phone}</span>}
-                          </div>
-                        )}
-                      </div>
-                      <span
-                        style={{
-                          fontSize: '0.6875rem',
-                          fontWeight: 700,
-                          backgroundColor: 'rgba(245, 158, 11, 0.12)',
-                          color: '#d97706',
-                          padding: '2px 8px',
-                          borderRadius: '12px',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {s.type}
-                      </span>
-                    </div>
-                  ))
-                )}
+            {/* Sender Company / Vendor Name */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Sender Company / Vendor Name
+                </label>
               </div>
-            )}
-          </div>
-
-          <Input
-            label="Sender Contact Number"
-            name="senderPhone"
-            placeholder="e.g. +91 98765 43210"
-            value={formData.senderPhone}
-            onChange={handleChange}
-            icon={FiPhone}
-          />
-
-          {/* Sender Company with Quick Brand Presets */}
-          <div>
-            <Input
-              label="Sender Company / Vendor Name"
-              name="senderCompany"
-              placeholder="e.g. Deye Solar Service Center / Solis HQ"
-              value={formData.senderCompany}
-              onChange={handleChange}
-            />
-            {/* Quick vendor chips */}
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
-              {VENDOR_PRESETS.slice(0, 4).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, senderCompany: v }))}
-                  style={{
-                    fontSize: '0.6875rem',
-                    padding: '2px 8px',
-                    borderRadius: '12px',
-                    border: '1px solid var(--border)',
-                    backgroundColor: 'var(--bg-secondary)',
-                    color: 'var(--text-secondary)',
-                    cursor: 'pointer',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--primary-light)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
-                >
-                  + {v.split(' ')[0]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '4px' }}>
-              <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                Receiving Warehouse / Godown Location
-              </label>
-              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                {['Ranchi', 'Jamshedpur', 'Hazaribagh', 'Patna', 'Daltonganj'].map((loc) => (
+              <Input
+                name="senderCompany"
+                placeholder="e.g. Deye Solar Service Center / Solis HQ"
+                value={billHeader.senderCompany}
+                onChange={handleHeaderChange}
+              />
+              {/* Quick Vendor Preset Chips */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                {['Deye', 'Solis', 'Growatt', 'Havells'].map((v) => (
                   <button
-                    key={loc}
+                    key={v}
                     type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, place: `${loc} Godown` }))}
+                    onClick={() => setBillHeader((prev) => ({ ...prev, senderCompany: `${v} Solar HQ` }))}
                     style={{
                       fontSize: '0.6875rem',
                       padding: '2px 8px',
                       borderRadius: '12px',
                       border: '1px solid var(--border)',
-                      backgroundColor: 'var(--bg-secondary)',
+                      backgroundColor: 'var(--surface)',
                       color: 'var(--text-secondary)',
                       cursor: 'pointer',
                     }}
                   >
-                    + {loc}
+                    + {v}
                   </button>
                 ))}
               </div>
             </div>
 
-            <Input
-              name="place"
-              placeholder="e.g. Ranchi Godown / Bay 1"
-              value={formData.place}
-              onChange={handleChange}
-              icon={FiMapPin}
-            />
+            {/* Sender Contact Phone */}
+            <div>
+              <Input
+                icon={FiPhone}
+                label="Sender Contact Number"
+                name="senderPhone"
+                placeholder="e.g. +91 98765 43210"
+                value={billHeader.senderPhone}
+                onChange={handleHeaderChange}
+                helperText="Primary sender contact phone"
+              />
+            </div>
+
+            {/* Sender Address */}
+            <div>
+              <Input
+                icon={FiMapPin}
+                label="Sender Address / Origin Location"
+                name="senderAddress"
+                placeholder="e.g. Plot 42, Electronics Industrial Area, Phase-2, New Delhi"
+                value={billHeader.senderAddress}
+                onChange={handleHeaderChange}
+                helperText="Origin location where goods dispatched from"
+              />
+            </div>
           </div>
 
-          <div className="full-width">
+          {/* Card B: RECEIVING WAREHOUSE / GODOWN LOCATION */}
+          <div
+            style={{
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--border)',
+              borderRadius: '12px',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '0.8rem',
+                fontWeight: 800,
+                color: '#0284c7',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                borderBottom: '1px solid var(--border)',
+                paddingBottom: '8px',
+              }}
+            >
+              <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#0284c7' }}></span>
+              <span>📍 Receiving Warehouse / Godown Destination</span>
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '4px' }}>
+                <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Receiving Warehouse / Godown Location <span style={{ color: 'var(--danger)' }}>*</span>
+                </label>
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  {activeGodowns.map((loc) => (
+                    <button
+                      key={loc}
+                      type="button"
+                      onClick={() => setBillHeader((prev) => ({ ...prev, place: `${loc} Godown / Bay 1` }))}
+                      style={{
+                        fontSize: '0.6875rem',
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        border: '1px solid var(--border)',
+                        backgroundColor: 'var(--surface)',
+                        color: 'var(--text-secondary)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      + {loc}
+                    </button>
+                  ))}
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setGodownModalOpen(true)}
+                      style={{
+                        fontSize: '0.6875rem',
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        border: '1px dashed var(--primary-light)',
+                        backgroundColor: 'rgba(108, 92, 231, 0.08)',
+                        color: 'var(--primary-light)',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                      }}
+                      title="Manage, add, or delete godowns"
+                    >
+                      ⚙️ Manage / Delete Godowns
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <Input
+                icon={FiMapPin}
+                name="place"
+                placeholder="e.g. Ranchi Godown / Bay 1"
+                value={billHeader.place}
+                onChange={handleHeaderChange}
+                error={errors.place}
+                helperText="Primary storage godown location receiving the goods"
+                required
+              />
+            </div>
+
+            {/* Inward Godown Verification Info Box */}
+            <div
+              style={{
+                backgroundColor: 'rgba(2, 132, 199, 0.08)',
+                border: '1px dashed rgba(2, 132, 199, 0.35)',
+                borderRadius: '10px',
+                padding: '16px',
+                fontSize: '0.825rem',
+                color: '#0369a1',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                marginTop: 'auto',
+              }}
+            >
+              <div style={{ fontWeight: 800, fontSize: '0.875rem' }}>
+                ✓ Inward Storage Rack & Godown Verified
+              </div>
+              <div style={{ color: '#334155' }}>
+                <strong>Storage Godown:</strong> {billHeader.place || 'Ranchi Godown / Bay 1'}
+              </div>
+              <div style={{ color: '#334155' }}>
+                <strong>Warehouse Bay:</strong> Bay 1 / Main Solar Staging Area
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
+                💡 Arriving quantities and serial numbers will be added directly to this godown stock balance upon registration.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 1B. MOVEMENT & BILL SEQUENCING DETAILS */}
+        <div
+          style={{
+            fontSize: '0.8rem',
+            fontWeight: 800,
+            color: '#1e3a8a',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+            marginBottom: '10px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}
+        >
+          <span>📄 Inward Document & Movement Particulars</span>
+        </div>
+
+        <div className="form-grid">
+          {/* Movement Reason */}
+          <div>
             <Input
-              label="Sender Address / Origin Location"
-              name="senderAddress"
-              placeholder="e.g. Plot 42, Electronics Industrial Area, Phase-2, New Delhi"
-              value={formData.senderAddress}
-              onChange={handleChange}
-              icon={FiMapPin}
-            />
+              as="select"
+              label="Inward Movement Reason"
+              name="reason"
+              value={billHeader.reason}
+              onChange={handleHeaderChange}
+              required
+            >
+              {STOCK_REASONS.in.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </Input>
+
+            {billHeader.reason === 'Other' && (
+              <div style={{ marginTop: '8px' }}>
+                <Input
+                  label="Type Custom Reason"
+                  name="customReason"
+                  placeholder="Specify exact inward purpose..."
+                  value={billHeader.customReason}
+                  onChange={handleHeaderChange}
+                  error={errors.customReason}
+                  required
+                />
+              </div>
+            )}
           </div>
 
           {/* Financial Year Selector */}
@@ -1310,8 +1300,8 @@ const StockInForm = ({
                 style={{
                   fontSize: '0.6875rem',
                   fontWeight: 700,
-                  backgroundColor: 'rgba(245, 158, 11, 0.12)',
-                  color: '#d97706',
+                  backgroundColor: 'rgba(30, 58, 138, 0.1)',
+                  color: '#1e3a8a',
                   padding: '2px 8px',
                   borderRadius: '6px',
                 }}
@@ -1334,7 +1324,7 @@ const StockInForm = ({
             </Input>
           </div>
 
-          {/* Inward Reference # with Prefix & Auto-Generate */}
+          {/* Inward Reference / Challan / PO # */}
           <div>
             <div
               style={{
@@ -1355,8 +1345,10 @@ const StockInForm = ({
               </label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <select
-                  value={inwardPrefix}
+                  value={billPrefix}
                   onChange={(e) => handlePrefixChange(e.target.value)}
+                  disabled={!isAdmin}
+                  title={isAdmin ? "Select bill prefix" : "Prefix is auto-linked to inward reason (Admin can change)"}
                   style={{
                     backgroundColor: 'var(--bg-secondary)',
                     border: '1px solid var(--border)',
@@ -1365,28 +1357,31 @@ const StockInForm = ({
                     fontSize: '0.72rem',
                     fontWeight: 700,
                     padding: '2px 6px',
-                    cursor: 'pointer',
+                    cursor: isAdmin ? 'pointer' : 'default',
+                    opacity: isAdmin ? 1 : 0.85,
                   }}
                 >
-                  <option value="INW">Prefix: INW/</option>
+                  <option value="INV">Prefix: INV/</option>
                   <option value="DC">Prefix: DC/</option>
-                  <option value="PO">Prefix: PO/</option>
-                  <option value="GRN">Prefix: GRN/</option>
+                  <option value="RET">Prefix: RET/</option>
+                  <option value="TRF">Prefix: TRF/</option>
+                  <option value="INW">Prefix: INW/</option>
                   <option value="CHALLAN">Prefix: CHALLAN/</option>
+                  <option value="BILL">Prefix: BILL/</option>
                 </select>
 
                 <button
                   type="button"
                   onClick={() => {
-                    const newRef = generateBillNumberForFY(
+                    const newBill = generateBillNumberForFY(
                       selectedFY,
                       pastTransactions,
-                      inwardPrefix
+                      billPrefix
                     );
-                    setFormData((prev) => ({ ...prev, referenceNo: newRef }));
-                    toast.success(`Reference updated for FY ${selectedFY}`);
+                    setBillHeader((prev) => ({ ...prev, referenceNo: newBill }));
+                    toast.success(`Inward reference updated for FY ${selectedFY}`);
                   }}
-                  title="Recalculate sequential inward reference for this FY"
+                  title="Recalculate sequential bill number for this Financial Year"
                   style={{
                     background: 'none',
                     border: 'none',
@@ -1409,29 +1404,801 @@ const StockInForm = ({
             <Input
               icon={FiFileText}
               name="referenceNo"
-              placeholder={`e.g. ${inwardPrefix}/${selectedFY}/0001`}
-              value={formData.referenceNo}
-              onChange={handleChange}
-              helperText={`Auto-sequenced for FY ${selectedFY} (updates when FY or date changes)`}
+              placeholder={`e.g. ${billPrefix}/${selectedFY}/0001`}
+              value={billHeader.referenceNo}
+              onChange={isAdmin ? handleHeaderChange : undefined}
+              readOnly={!isAdmin}
+              helperText={
+                isAdmin
+                  ? `Auto-sequenced for FY ${selectedFY} • Admin can edit reference # freely`
+                  : `Auto-sequenced for FY ${selectedFY} • Locked (Only Admin can manually edit)`
+              }
+              required
             />
           </div>
 
-          {/* Inward Date & Time with Financial Year Sync */}
-          <div className="full-width">
+          {/* Inward Date & Time */}
+          <div>
             <Input
-              label="Inward Date & Time"
+              icon={FiCalendar}
+              label={isAdmin ? "Inward Date & Time (Admin Editable)" : "Inward Date & Time (Auto-Captured)"}
               name="transactionDate"
               type="datetime-local"
-              value={formData.transactionDate}
-              onChange={handleChange}
-              icon={FiCalendar}
-              helperText={`Selected Date belongs to Financial Year: ${getFinancialYear(formData.transactionDate)}`}
+              value={billHeader.transactionDate}
+              onChange={isAdmin ? handleHeaderChange : undefined}
+              disabled={!isAdmin}
+              readOnly={!isAdmin}
+              helperText={
+                isAdmin
+                  ? `🕒 Auto-captured time. FY: ${getFinancialYear(billHeader.transactionDate)} (Admin can adjust date/time)`
+                  : `🔒 Auto-captured real time. FY: ${getFinancialYear(billHeader.transactionDate)} (Editable only by Admin)`
+              }
+              required
             />
           </div>
         </div>
       </div>
 
-      {/* 4. REMARKS & SUBMIT */}
+      {/* 2. MULTI-ITEM INWARD BILL WITH CLEAN SEGMENTED CATEGORY TABS (IDENTICAL TO STOCK OUT) */}
+      <div
+        style={{
+          backgroundColor: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: '16px',
+          padding: '24px',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '20px',
+            flexWrap: 'wrap',
+            gap: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(30, 58, 138, 0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#1e3a8a',
+              }}
+            >
+              <FiShoppingBag size={20} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                2. Items in this Inward Shipment ({billItems.length})
+              </h3>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Receive inverters, solar panels, batteries, MCBs, MSBs, wires, consumables, or spares
+              </span>
+            </div>
+          </div>
+
+          {/* Clean Add Item Action in Header */}
+          <Button
+            type="button"
+            variant="secondary"
+            icon={FiPlus}
+            onClick={handleAddItem}
+            style={{ fontWeight: 700, padding: '7px 16px', fontSize: '0.84rem' }}
+          >
+            Add Another Item
+          </Button>
+        </div>
+
+        {/* Item Rows */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {billItems.map((item, idx) => {
+            const currentTab = item.categoryTab || 'all';
+            const activeTabDef = CATEGORY_TABS.find((t) => t.id === currentTab);
+            const filteredProducts =
+              currentTab === 'all'
+                ? products
+                : products.filter((p) => Boolean(activeTabDef?.match && activeTabDef.match(p)));
+
+            const prod = products.find((p) => p.id === parseInt(item.productId, 10));
+            const unit = prod?.unit || 'pcs';
+
+            return (
+              <div
+                key={item.id}
+                style={{
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '16px',
+                  padding: '24px',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.04)',
+                  position: 'relative',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '18px',
+                }}
+              >
+                {/* 1. Item Header */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    paddingBottom: '14px',
+                    borderBottom: '1px solid #e2e8f0',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        backgroundColor: 'rgba(30, 58, 138, 0.08)',
+                        color: '#1e3a8a',
+                        border: '1px solid rgba(30, 58, 138, 0.16)',
+                        padding: '4px 12px',
+                        borderRadius: '8px',
+                        fontSize: '0.8rem',
+                        fontWeight: 800,
+                        letterSpacing: '0.04em',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      <FiBox size={14} />
+                      <span>ITEM #{String(idx + 1).padStart(2, '0')}</span>
+                    </span>
+
+                    {prod && (
+                      <span
+                        style={{
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          color: '#0f172a',
+                        }}
+                      >
+                        {prod.name}
+                      </span>
+                    )}
+                  </div>
+
+                  {billItems.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveItem(idx)}
+                      style={{
+                        background: 'rgba(239, 68, 68, 0.08)',
+                        border: '1px solid rgba(239, 68, 68, 0.25)',
+                        color: '#ef4444',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        padding: '5px 12px',
+                        borderRadius: '8px',
+                        transition: 'all 0.15s ease',
+                      }}
+                      title="Remove this item from inward bill"
+                    >
+                      <FiTrash2 size={13} />
+                      <span>Remove Item</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* 2. Sleek Category Filter (All Visible or Scrollable with Visible Scrollbar) */}
+                <div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '10px',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <label
+                        style={{
+                          fontSize: '0.76rem',
+                          fontWeight: 700,
+                          color: '#64748b',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                        }}
+                      >
+                        Filter by Equipment Category
+                      </label>
+                      <span
+                        style={{
+                          fontSize: '0.7rem',
+                          color: '#64748b',
+                          backgroundColor: '#f1f5f9',
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {CATEGORY_TABS.length} Categories
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {categoryViewMode === 'scroll' && (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleCategoryScroll(idx, -1)}
+                            style={{
+                              background: '#ffffff',
+                              border: '1px solid #cbd5e1',
+                              borderRadius: '6px',
+                              width: '26px',
+                              height: '26px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              color: '#334155',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                              padding: 0,
+                            }}
+                            title="Scroll categories left"
+                          >
+                            <FiChevronLeft size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCategoryScroll(idx, 1)}
+                            style={{
+                              background: '#ffffff',
+                              border: '1px solid #cbd5e1',
+                              borderRadius: '6px',
+                              width: '26px',
+                              height: '26px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              color: '#334155',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                              padding: 0,
+                            }}
+                            title="Scroll categories right"
+                          >
+                            <FiChevronRight size={15} />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* View Switcher: All Visible vs Scroll Bar */}
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          backgroundColor: '#f1f5f9',
+                          borderRadius: '8px',
+                          padding: '2px',
+                          border: '1px solid #e2e8f0',
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setCategoryViewMode('all')}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '0.73rem',
+                            fontWeight: categoryViewMode === 'all' ? 700 : 500,
+                            backgroundColor: categoryViewMode === 'all' ? '#ffffff' : 'transparent',
+                            color: categoryViewMode === 'all' ? '#1e3a8a' : '#64748b',
+                            border: 'none',
+                            boxShadow: categoryViewMode === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                          title="Show all categories visible"
+                        >
+                          <FiEye size={12} />
+                          <span>All Visible</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCategoryViewMode('scroll')}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '0.73rem',
+                            fontWeight: categoryViewMode === 'scroll' ? 700 : 500,
+                            backgroundColor: categoryViewMode === 'scroll' ? '#ffffff' : 'transparent',
+                            color: categoryViewMode === 'scroll' ? '#1e3a8a' : '#64748b',
+                            border: 'none',
+                            boxShadow: categoryViewMode === 'scroll' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                          title="Horizontal scroll row with visible scrollbar"
+                        >
+                          <FiSliders size={12} />
+                          <span>Scroll Bar</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pills Container */}
+                  <div
+                    ref={(el) => {
+                      if (el) categoryScrollRefs.current[idx] = el;
+                    }}
+                    className={categoryViewMode === 'scroll' ? 'category-pills-scroll' : ''}
+                    style={{
+                      display: 'flex',
+                      flexWrap: categoryViewMode === 'all' ? 'wrap' : 'nowrap',
+                      gap: '8px',
+                      overflowX: categoryViewMode === 'scroll' ? 'auto' : 'visible',
+                      paddingBottom: categoryViewMode === 'scroll' ? '8px' : '2px',
+                      paddingTop: '2px',
+                      WebkitOverflowScrolling: 'touch',
+                      scrollbarWidth: categoryViewMode === 'scroll' ? 'thin' : 'auto',
+                      scrollbarColor: '#94a3b8 #f1f5f9',
+                    }}
+                  >
+                    {CATEGORY_TABS.map((tab) => {
+                      const isActive = currentTab === tab.id;
+                      const count =
+                        tab.id === 'all'
+                          ? products.length
+                          : products.filter((p) => tab.match && tab.match(p)).length;
+
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => handleItemCategoryTab(idx, tab.id)}
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: '9999px',
+                            fontSize: '0.78rem',
+                            fontWeight: isActive ? 800 : 600,
+                            border: isActive ? '1px solid #1e3a8a' : '1px solid #e2e8f0',
+                            backgroundColor: isActive ? '#1e3a8a' : '#f8fafc',
+                            color: isActive ? '#ffffff' : '#475569',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.15s ease',
+                            boxShadow: isActive ? '0 2px 8px rgba(30, 58, 138, 0.25)' : 'none',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <span>{tab.label}</span>
+                          <span
+                            style={{
+                              fontSize: '0.68rem',
+                              padding: '1px 6px',
+                              borderRadius: '9999px',
+                              backgroundColor: isActive ? 'rgba(255, 255, 255, 0.22)' : '#e2e8f0',
+                              color: isActive ? '#ffffff' : '#64748b',
+                              fontWeight: 700,
+                            }}
+                          >
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 3. Product Selection & Quantity in Cohesive Balanced Row */}
+                <div>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(280px, 1fr) 220px',
+                      gap: '16px',
+                      alignItems: 'start',
+                    }}
+                  >
+                    <div>
+                      <Input
+                        as="select"
+                        label={`Equipment / Material (${filteredProducts.length} in ${activeTabDef?.label || 'category'})`}
+                        value={item.productId}
+                        onChange={(e) => handleItemChange(idx, 'productId', e.target.value)}
+                        error={errors[`item_${idx}_productId`]}
+                        required
+                      >
+                        <option value="">
+                          {filteredProducts.length === 0
+                            ? `-- No equipment found in this category --`
+                            : `-- Choose Equipment / Model (${filteredProducts.length} available) --`}
+                        </option>
+                        {filteredProducts.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            [{p.productType || 'Product'}] {p.name} ({p.sku}) {p.brand ? `• ${p.brand}` : ''} {p.capacity ? `(${p.capacity})` : ''} — Current Stock: {p.quantity} {p.unit || 'pcs'}
+                          </option>
+                        ))}
+                      </Input>
+                    </div>
+
+                    <div>
+                      <Input
+                        label={`Quantity to Inward (${unit})`}
+                        type="number"
+                        min="1"
+                        placeholder="e.g. 1"
+                        value={item.quantity}
+                        onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
+                        error={errors[`item_${idx}_quantity`]}
+                        helperText={prod ? `Current Stock: ${prod.quantity} ${unit} (will increase)` : 'Enter arriving quantity'}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Product Details Overview Strip */}
+                  {prod && (
+                    <div
+                      style={{
+                        marginTop: '12px',
+                        padding: '12px 16px',
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '12px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <span
+                          style={{
+                            fontFamily: 'monospace',
+                            fontWeight: 700,
+                            fontSize: '0.75rem',
+                            backgroundColor: '#ffffff',
+                            color: '#1e293b',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                          }}
+                        >
+                          SKU: {prod.sku}
+                        </span>
+                        {prod.brand && (
+                          <span style={{ fontSize: '0.8rem', color: '#475569' }}>
+                            Brand: <strong style={{ color: '#0f172a' }}>{prod.brand}</strong>
+                          </span>
+                        )}
+                        {prod.capacity && (
+                          <span style={{ fontSize: '0.8rem', color: '#475569' }}>
+                            Rating: <strong style={{ color: '#0f172a' }}>{prod.capacity}</strong>
+                          </span>
+                        )}
+                        {prod.phase && (
+                          <span style={{ fontSize: '0.8rem', color: '#475569' }}>
+                            Phase: <strong style={{ color: '#0f172a' }}>{prod.phase}</strong>
+                          </span>
+                        )}
+                        {prod.dcrType && (
+                          <span style={{ fontSize: '0.8rem', color: '#475569' }}>
+                            DCR: <strong style={{ color: '#0f172a' }}>{prod.dcrType}</strong>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Real-time Warehouse Stock Badge */}
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '4px 12px',
+                          borderRadius: '9999px',
+                          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                          color: '#059669',
+                          fontWeight: 800,
+                          fontSize: '0.78rem',
+                          border: '1px solid rgba(16, 185, 129, 0.25)',
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: '7px',
+                            height: '7px',
+                            borderRadius: '50%',
+                            backgroundColor: '#10b981',
+                          }}
+                        />
+                        <span>Current Stock: {prod.quantity} {unit} (+{parseInt(item.quantity, 10) || 0} arriving)</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. Unit Serial Numbers Card */}
+                <div
+                  style={{
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '18px 20px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '10px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          backgroundColor: 'rgba(30, 58, 138, 0.08)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#1e3a8a',
+                        }}
+                      >
+                        <FiCamera size={17} />
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                            Unit Serial Numbers
+                          </h3>
+                          {item.selectedSerials?.length > 0 ? (
+                            <span
+                              style={{
+                                fontSize: '0.72rem',
+                                fontWeight: 800,
+                                backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                                color: '#059669',
+                                border: '1px solid rgba(16, 185, 129, 0.25)',
+                                padding: '2px 8px',
+                                borderRadius: '9999px',
+                              }}
+                            >
+                              ✓ {item.selectedSerials.length} Serial(s) Captured
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                              (Optional)
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px', display: 'block' }}>
+                          Scan barcodes, QR codes, or type serial numbers for incoming equipment
+                        </span>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      icon={FiCamera}
+                      onClick={() => setActiveScannerItemIndex(idx)}
+                      style={{
+                        fontWeight: 700,
+                        backgroundColor: '#ffffff',
+                        borderColor: '#cbd5e1',
+                      }}
+                    >
+                      Scan Barcode / QR
+                    </Button>
+                  </div>
+
+                  {/* Serial Entry Row */}
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ flex: 1 }}>
+                      <Input
+                        placeholder="Type Serial Number and press Enter (e.g. SN-98240)..."
+                        value={itemSerialInputs[idx] || ''}
+                        onChange={(e) => setItemSerialInputs((prev) => ({ ...prev, [idx]: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddDirectSerialToItem(idx);
+                          }
+                        }}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="primary"
+                      icon={FiPlus}
+                      onClick={() => handleAddDirectSerialToItem(idx)}
+                      style={{
+                        padding: '0 20px',
+                        fontWeight: 700,
+                        backgroundColor: '#1e3a8a',
+                        borderColor: '#1e3a8a',
+                      }}
+                    >
+                      Add SN
+                    </Button>
+                  </div>
+
+                  {/* Added Serials Chips */}
+                  {item.selectedSerials?.length > 0 && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '6px',
+                        maxHeight: '130px',
+                        overflowY: 'auto',
+                        padding: '10px 12px',
+                        backgroundColor: '#ffffff',
+                        borderRadius: '10px',
+                        border: '1px solid #e2e8f0',
+                      }}
+                    >
+                      {item.selectedSerials.map((sn, sIdx) => (
+                        <span
+                          key={sIdx}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            backgroundColor: '#f1f5f9',
+                            border: '1px solid #cbd5e1',
+                            color: '#0f172a',
+                            padding: '3px 9px',
+                            borderRadius: '6px',
+                            fontSize: '0.78rem',
+                            fontFamily: 'ui-monospace, monospace',
+                            fontWeight: 700,
+                          }}
+                        >
+                          <FiZap size={11} color="#1e3a8a" />
+                          <span>{sn}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItemSerial(idx, sIdx)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#ef4444',
+                              cursor: 'pointer',
+                              padding: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                            }}
+                            title="Remove Serial"
+                          >
+                            <FiX size={12} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Full-Width Dashed Add Another Equipment Row Button */}
+        <div style={{ marginTop: '18px' }}>
+          <button
+            type="button"
+            onClick={handleAddItem}
+            style={{
+              width: '100%',
+              padding: '12px',
+              borderRadius: '12px',
+              border: '2px dashed var(--border)',
+              backgroundColor: 'var(--surface)',
+              color: 'var(--primary-light)',
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              transition: 'all var(--transition-fast)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--primary-light)';
+              e.currentTarget.style.backgroundColor = 'var(--bg-secondary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--border)';
+              e.currentTarget.style.backgroundColor = 'var(--surface)';
+            }}
+          >
+            <FiPlus size={16} />
+            <span>+ Add Another Equipment / Material to this Inward Bill</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3. LIVE INWARD RECEIPT SUMMARY */}
+      <div
+        style={{
+          backgroundColor: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: '16px',
+          padding: '20px 24px',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: '16px',
+          alignItems: 'center',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
+        <div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+            Total Items in Inward Bill
+          </span>
+          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px' }}>
+            {billItems.length} Distinct Products
+          </div>
+        </div>
+
+        <div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+            Total Units Received
+          </span>
+          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-light)', marginTop: '2px' }}>
+            +{totalUnits} Units
+          </div>
+        </div>
+
+        <div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+            Serial Numbers Captured
+          </span>
+          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px' }}>
+            {totalSerials} Serials
+          </div>
+        </div>
+
+        <div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+            Gate Entry Status
+          </span>
+          <div style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--success)', marginTop: '2px' }}>
+            READY FOR INWARD ENTRY
+          </div>
+        </div>
+      </div>
+
+      {/* 4. NOTES & SUBMIT INWARD BILL */}
       <div
         style={{
           backgroundColor: 'var(--surface)',
@@ -1443,59 +2210,63 @@ const StockInForm = ({
       >
         <Input
           as="textarea"
-          label="Remarks / Defect Notes"
+          label="Inward Remarks / Gate Pass Delivery Notes"
           name="notes"
-          placeholder="Condition of received material, testing remarks, carton seal state..."
-          value={formData.notes}
-          onChange={handleChange}
+          placeholder="Enter carton seals, physical inspection condition, packaging remarks..."
+          value={billHeader.notes}
+          onChange={handleHeaderChange}
           rows={2}
         />
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px', marginTop: '20px' }}>
           <Button
             type="submit"
             variant="primary"
             loading={loading}
             icon={FiCheckCircle}
             style={{
-              padding: '12px 28px',
-              fontSize: '0.95rem',
-              fontWeight: 700,
+              padding: '13px 32px',
+              fontSize: '1rem',
+              fontWeight: 800,
+              backgroundColor: '#1e3a8a',
+              borderColor: '#1e3a8a',
             }}
           >
-            {loading ? 'Submitting Registration...' : 'Complete Inward Registration'}
+            {loading
+              ? 'Processing Inward...'
+              : `Confirm & Generate Stock In Entry (${billItems.length} Items)`}
           </Button>
         </div>
       </div>
 
       {/* Barcode Scanner Modal */}
-      <BarcodeScannerModal
-        isOpen={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-        onAddSerials={handleAddScannedSerials}
-        existingSerials={formData.serialNumbers}
-        title="Scan Inward Equipment Barcodes"
-      />
+      {activeScannerItemIndex !== null && (
+        <BarcodeScannerModal
+          isOpen={true}
+          onClose={() => setActiveScannerItemIndex(null)}
+          onAddSerials={handleAddScannedSerials}
+          existingSerials={billItems[activeScannerItemIndex]?.selectedSerials || []}
+          title={`Scan Barcodes for ${activeScannerProd?.name || 'Selected Equipment'}`}
+        />
+      )}
 
-      {/* Universal Sender & Vendor Directory Search Modal */}
+      {/* Universal Supplier & Sender Directory Search Modal */}
       <Modal
-        isOpen={isSenderModalOpen}
-        onClose={() => setIsSenderModalOpen(false)}
-        title="Universal Senders, Suppliers & Vendor Directory"
-        subtitle={`Search across all ${allSendersDirectory.length} historical senders, RMA engineers, and suppliers`}
+        isOpen={isDirectoryModalOpen}
+        onClose={() => setIsDirectoryModalOpen(false)}
+        title="Universal Supplier & Inward Sender Directory"
+        subtitle={`Search across all ${allDirectory.length} historical vendors, technicians, and project senders`}
         maxWidth="750px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Modal Search Bar */}
           <Input
             icon={FiSearch}
-            placeholder="Search by sender name, company, phone, location, address..."
+            placeholder="Search by vendor name, company, origin address, phone..."
             value={modalSearchTerm}
             onChange={(e) => setModalSearchTerm(e.target.value)}
             autoFocus
           />
 
-          {/* Filter Tabs */}
           <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
             <button
               type="button"
@@ -1511,7 +2282,7 @@ const StockInForm = ({
                 cursor: 'pointer',
               }}
             >
-              All Senders ({allSendersDirectory.length})
+              All Records ({allDirectory.length})
             </button>
             <button
               type="button"
@@ -1527,7 +2298,7 @@ const StockInForm = ({
                 cursor: 'pointer',
               }}
             >
-              Suppliers / Inward Senders ({allSendersDirectory.filter((d) => d.rawType === 'in').length})
+              Suppliers / Inward Senders ({allDirectory.filter((d) => d.rawType === 'in').length})
             </button>
             <button
               type="button"
@@ -1543,11 +2314,10 @@ const StockInForm = ({
                 cursor: 'pointer',
               }}
             >
-              Project Clients ({allSendersDirectory.filter((d) => d.rawType === 'out').length})
+              Dispatch Clients ({allDirectory.filter((d) => d.rawType === 'out').length})
             </button>
           </div>
 
-          {/* Senders Directory Records List */}
           <div
             style={{
               maxHeight: '380px',
@@ -1557,14 +2327,14 @@ const StockInForm = ({
               gap: '10px',
             }}
           >
-            {filteredModalSenders.length === 0 ? (
+            {filteredModalDirectory.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)' }}>
                 <FiUser size={36} style={{ opacity: 0.4, marginBottom: '8px' }} />
-                <h4>No matching sender found</h4>
+                <h4>No matching records found</h4>
                 <p style={{ fontSize: '0.8125rem' }}>Try refining your search keyword</p>
               </div>
             ) : (
-              filteredModalSenders.map((item, idx) => (
+              filteredModalDirectory.map((item, idx) => (
                 <div
                   key={idx}
                   style={{
@@ -1590,7 +2360,7 @@ const StockInForm = ({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
-                        {item.name}
+                        {item.name} {item.company ? `(${item.company})` : ''}
                       </span>
                       <span
                         style={{
@@ -1598,9 +2368,12 @@ const StockInForm = ({
                           fontWeight: 700,
                           backgroundColor:
                             item.rawType === 'in'
-                              ? 'rgba(245, 158, 11, 0.12)'
+                              ? 'rgba(16, 185, 129, 0.12)'
                               : 'rgba(108, 92, 231, 0.12)',
-                          color: item.rawType === 'in' ? '#d97706' : 'var(--primary-light)',
+                          color:
+                            item.rawType === 'in'
+                              ? 'var(--success)'
+                              : 'var(--primary-light)',
                           padding: '2px 8px',
                           borderRadius: '6px',
                         }}
@@ -1609,31 +2382,30 @@ const StockInForm = ({
                       </span>
                     </div>
 
-                    <div
-                      style={{
-                        fontSize: '0.8125rem',
-                        color: 'var(--text-secondary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        marginTop: '4px',
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      {item.company && <span>🏢 {item.company}</span>}
-                      {item.phone && <span>📞 {item.phone}</span>}
-                      {item.address && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <FiMapPin size={12} color="var(--primary-light)" /> {item.address}
+                    {item.place && (
+                      <div
+                        style={{
+                          fontSize: '0.8125rem',
+                          color: 'var(--text-secondary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          marginTop: '4px',
+                        }}
+                      >
+                        <FiMapPin size={13} color="var(--primary-light)" style={{ flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.place}
                         </span>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '6px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      <span>Past Inward Batches: <strong>{item.count}</strong></span>
+                      <span>Movements: <strong>{item.count}</strong></span>
                       {item.date && (
                         <span>Last Active: <strong>{formatDateTime(item.date)}</strong></span>
                       )}
+                      {item.reason && <span>Recent: <em>{item.reason}</em></span>}
                     </div>
                   </div>
 
@@ -1641,10 +2413,10 @@ const StockInForm = ({
                     type="button"
                     variant="primary"
                     size="sm"
-                    onClick={() => handleSelectSender(item)}
+                    onClick={() => handleSelectDirectory(item)}
                     style={{ flexShrink: 0 }}
                   >
-                    Select & Fill
+                    Select & Apply
                   </Button>
                 </div>
               ))
@@ -1652,12 +2424,20 @@ const StockInForm = ({
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
-            <Button variant="secondary" onClick={() => setIsSenderModalOpen(false)}>
+            <Button variant="secondary" onClick={() => setIsDirectoryModalOpen(false)}>
               Close
             </Button>
           </div>
         </div>
       </Modal>
+
+      {/* Godown Add & Delete Modal */}
+      {isAdmin && (
+        <GodownModal
+          isOpen={godownModalOpen}
+          onClose={() => setGodownModalOpen(false)}
+        />
+      )}
     </form>
   );
 };

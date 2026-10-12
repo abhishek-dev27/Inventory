@@ -1,6 +1,7 @@
 import React from 'react';
 import Input from '../common/Input';
 import { FiSearch } from 'react-icons/fi';
+import { useGodowns } from '../../context/GodownContext';
 import { CATEGORIES, PRODUCT_TYPES, GODOWN_LOCATIONS } from '../../utils/constants';
 
 const TYPE_ICONS = {
@@ -32,6 +33,9 @@ const ProductSearch = ({
   categories = CATEGORIES,
   productTypes = PRODUCT_TYPES,
 }) => {
+  const { godownNames } = useGodowns();
+  const activeGodowns = godownNames && godownNames.length > 0 ? godownNames : GODOWN_LOCATIONS;
+
   // Combine predefined PRODUCT_TYPES and any custom types from database
   const combinedTypes = Array.from(
     new Set([...PRODUCT_TYPES, ...(Array.isArray(productTypes) ? productTypes : [])])
@@ -151,7 +155,7 @@ const ProductSearch = ({
               onChange={(e) => onLocationChange(e.target.value)}
             >
               <option value="">All Godowns</option>
-              {GODOWN_LOCATIONS.map((loc) => (
+              {activeGodowns.map((loc) => (
                 <option key={loc} value={loc}>
                   🏢 {loc} Godown
                 </option>

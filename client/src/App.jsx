@@ -3,8 +3,6 @@ import { useAuth } from './hooks/useAuth';
 import MainLayout from './components/layout/MainLayout';
 import Login from './pages/auth/Login';
 import Dashboard from './pages/dashboard/Dashboard';
-import Customers from './pages/customers/Customers';
-import Accounts from './pages/accounts/Accounts';
 import Products from './pages/products/Products';
 import AddProduct from './pages/products/AddProduct';
 import EditProduct from './pages/products/EditProduct';
@@ -17,7 +15,6 @@ import Reports from './pages/reports/Reports';
 import DailyReports from './pages/reports/DailyReports';
 import MonthlyReports from './pages/reports/MonthlyReports';
 import UsageReports from './pages/reports/UsageReports';
-import CustomerReports from './pages/reports/CustomerReports';
 import Loader from './components/common/Loader';
 
 const ProtectedRoute = ({ children, adminOnly = false, requiredModule = null }) => {
@@ -47,22 +44,6 @@ function App() {
         }
       >
         <Route index element={<Dashboard />} />
-        <Route
-          path="customers"
-          element={
-            <ProtectedRoute requiredModule="customers">
-              <Customers />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="accounts"
-          element={
-            <ProtectedRoute requiredModule="accounts">
-              <Accounts />
-            </ProtectedRoute>
-          }
-        />
         <Route
           path="products"
           element={
@@ -156,14 +137,6 @@ function App() {
           element={
             <ProtectedRoute requiredModule="reports">
               <UsageReports />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="reports/customers"
-          element={
-            <ProtectedRoute requiredModule="reports">
-              <CustomerReports />
             </ProtectedRoute>
           }
         />

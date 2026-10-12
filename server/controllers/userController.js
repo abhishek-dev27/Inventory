@@ -110,7 +110,7 @@ const createUser = async (req, res, next) => {
     }
 
     const defaultStaffModules = ['dashboard', 'products', 'stock_in', 'stock_out', 'stock_history'];
-    const allModules = ['dashboard', 'products', 'stock_in', 'stock_out', 'stock_history', 'customers', 'accounts', 'reports', 'users', 'activity_logs'];
+    const allModules = ['dashboard', 'products', 'stock_in', 'stock_out', 'stock_history', 'reports', 'users', 'activity_logs'];
 
     const user = await User.create({
       name: name.trim(),

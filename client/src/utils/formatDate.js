@@ -56,6 +56,15 @@ export const getTodayISO = () => {
 };
 
 /**
+ * Get current date and time formatted for HTML datetime-local input in local timezone (YYYY-MM-DDTHH:mm).
+ */
+export const getCurrentLocalDateTime = () => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+/**
  * Get Financial Year string (e.g. "2023-24", "2024-25", "2026-27") from a date.
  * Financial Year runs from April 1st to March 31st.
  */
@@ -97,15 +106,15 @@ export const generateBillNumber = (dateInput, existingTransactions = [], prefix 
 };
 
 /**
- * Generate Bill Number directly from a given Financial Year string (e.g. '2023-24')
+ * Generate Bill Number directly from a given Financial Year string (e.g. '2026-27')
  */
-export const generateBillNumberForFY = (fyString, existingTransactions = [], prefix = 'BILL') => {
+export const generateBillNumberForFY = (fyString, existingTransactions = [], prefix = 'INV') => {
   const fy = fyString || getFinancialYear(new Date());
 
   const fyBills = new Set();
   (existingTransactions || []).forEach((t) => {
     const ref = t.referenceNo || '';
-    if (ref.includes(fy)) {
+    if (ref.includes(fy) || (ref.startsWith(prefix) && ref.includes(fy.split('-')[0].slice(-2)))) {
       fyBills.add(ref);
     }
   });

@@ -4,9 +4,6 @@ const User = require('./models/User');
 const Product = require('./models/Product');
 const StockTransaction = require('./models/StockTransaction');
 const ActivityLog = require('./models/ActivityLog');
-const Customer = require('./models/Customer');
-const Account = require('./models/Account');
-
 // Define model associations
 User.hasMany(Product, { foreignKey: 'userId', as: 'products' });
 Product.belongsTo(User, { foreignKey: 'userId', as: 'creator' });
@@ -19,15 +16,6 @@ StockTransaction.belongsTo(Product, { foreignKey: 'productId', as: 'product' });
 
 User.hasMany(ActivityLog, { foreignKey: 'userId', as: 'activityLogs' });
 ActivityLog.belongsTo(User, { foreignKey: 'userId', as: 'user' });
-
-User.hasMany(Customer, { foreignKey: 'userId', as: 'customers' });
-Customer.belongsTo(User, { foreignKey: 'userId', as: 'creator' });
-
-User.hasMany(Account, { foreignKey: 'userId', as: 'accounts' });
-Account.belongsTo(User, { foreignKey: 'userId', as: 'creator' });
-
-Customer.hasOne(Account, { foreignKey: 'customerId', as: 'account' });
-Account.belongsTo(Customer, { foreignKey: 'customerId', as: 'customer' });
 
 const path = require('path');
 const fs = require('fs');
@@ -121,6 +109,11 @@ const startServer = async (port = PORT, shouldInitDb = true) => {
       } else {
         console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on port ${port} (PID: ${process.pid})`);
       }
+
+      // Signal PM2 or cluster manager that server has bound port and is ready
+      if (typeof process.send === 'function') {
+        process.send('ready');
+      }
     });
 
     return server;
@@ -129,6 +122,18 @@ const startServer = async (port = PORT, shouldInitDb = true) => {
     process.exit(1);
   }
 };
+
+// 🛡️ Global Exception Safety: Prevent unexpected process crashes
+process.on('uncaughtException', (err) => {
+  console.error('🚨 [CRITICAL SAFETY] Uncaught Exception:', err.message);
+  console.error(err.stack);
+  // Do not exit the process, let PM2 or cluster auto-manage
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🚨 [CRITICAL SAFETY] Unhandled Promise Rejection at:', promise);
+  console.error('Reason:', reason);
+});
 
 // Run directly if invoked from command line
 if (require.main === module) {

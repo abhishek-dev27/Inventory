@@ -2,8 +2,6 @@ require('dotenv').config({ path: __dirname + '/.env' });
 const { sequelize } = require('./config/db');
 const Product = require('./models/Product');
 const StockTransaction = require('./models/StockTransaction');
-const Customer = require('./models/Customer');
-const Account = require('./models/Account');
 const ActivityLog = require('./models/ActivityLog');
 const User = require('./models/User');
 
@@ -892,85 +890,14 @@ async function importBOMData() {
     }
     console.log(`✅ Stock inward transactions recorded.`);
 
-    // 4. Create / Update Customer Record for 3.3 kW Project
-    console.log(`\n👥 Registering Customer / Project in 'customers' table...`);
-    let [customer, custCreated] = await Customer.findOrCreate({
-      where: { uniqueId: 'CUST-SOL-3.3KW-01' },
-      defaults: {
-        uniqueId: 'CUST-SOL-3.3KW-01',
-        customerName: '3.3 kW Rooftop Solar Plant',
-        contactNo: '+91 98765 43210',
-        address: 'Site Notebook Reference, Rooftop Installation',
-        systemType: 'On-Grid',
-        capacity: '3.3 kW',
-        dateOfVisit: '2026-08-17',
-        timeOfVisit: '10:30 AM',
-        reference: 'Handwritten Site Notebook (17 Aug 2026)',
-        bdeName: 'Site Lead Engineer',
-        bdeEmail: 'site.lead@sologix.com',
-        bookingConfirmed: 'Confirmed',
-        bookingAmount: 10000.00,
-        modeOfPayment: 'UPI',
-        projectValue: 141848.00,
-        financialYear: '2026-2027',
-        comments: 'Verified material list cross-checked line by line against handwritten site notebook (photo dated 17 Aug 2026). Grand Total: ₹1,41,848.',
-        userId: adminId,
-      },
-    });
-
-    if (!custCreated) {
-      await customer.update({
-        projectValue: 141848.00,
-        bookingAmount: 10000.00,
-        bookingConfirmed: 'Confirmed',
-        capacity: '3.3 kW',
-        financialYear: '2026-2027',
-      });
-    }
-    console.log(`✅ Customer record ${custCreated ? 'created' : 'updated'}: ${customer.customerName} (ID: ${customer.id})`);
-
-    // 5. Create / Update Account Ledger Record
-    console.log(`\n💳 Registering Accounts Ledger entry in 'accounts' table...`);
-    let [account, accCreated] = await Account.findOrCreate({
-      where: { uniqueId: 'ACC-SOL-3.3KW-01' },
-      defaults: {
-        uniqueId: 'ACC-SOL-3.3KW-01',
-        customerName: '3.3 kW Rooftop Solar Plant',
-        contactNo: '+91 98765 43210',
-        address: 'Site Notebook Reference, Rooftop Installation',
-        bookingAmount: 10000.00,
-        modeOfPayment: 'UPI',
-        projectValue: 141848.00,
-        statusOfWork: 'In Progress',
-        completionPercentage: 25,
-        remainingAmount: 131848.00,
-        payment1Amount: 10000.00,
-        payment1Date: '2026-08-17',
-        payment1Mode: 'UPI',
-        financialYear: '2026-2027',
-        customerId: customer.id,
-        userId: adminId,
-      },
-    });
-
-    if (!accCreated) {
-      await account.update({
-        projectValue: 141848.00,
-        bookingAmount: 10000.00,
-        remainingAmount: 131848.00,
-        customerId: customer.id,
-      });
-    }
-    console.log(`✅ Account ledger entry ${accCreated ? 'created' : 'updated'}: ${account.customerName} (ID: ${account.id})`);
-
-    // 6. Log Activity in 'activity_logs'
+    // 4. Log Activity in 'activity_logs'
     await ActivityLog.create({
       action: 'IMPORT_BOM_DATA',
       userEmail: admin ? admin.email : 'admin@inventory.com',
       ipAddress: '127.0.0.1',
       location: 'Local Console / Database Seeder',
       status: 'SUCCESS',
-      details: `Imported 3.3 kW Solar Plant verified bill of materials (${bomMaterials.length} items, Grand Total: ₹1,41,848) into products, stock transactions, customer, and accounts ledger.`,
+      details: `Imported 3.3 kW Solar Plant verified bill of materials (${bomMaterials.length} items, Grand Total: ₹1,41,848) into products and stock transactions.`,
     });
     console.log(`\n🛡️ Activity audit log created.`);
 

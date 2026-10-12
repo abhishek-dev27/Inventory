@@ -11,7 +11,6 @@ import StatCard from '../../components/dashboard/StatCard';
 import StockChart from '../../components/dashboard/StockChart';
 import CategoryDistributionChart from '../../components/dashboard/CategoryDistributionChart';
 import GodownDistributionCard from '../../components/dashboard/GodownDistributionCard';
-import CustomerPaymentPendingCard from '../../components/dashboard/CustomerPaymentPendingCard';
 import RecentActivity from '../../components/dashboard/RecentActivity';
 import LowStockList from '../../components/dashboard/LowStockList';
 import Button from '../../components/common/Button';
@@ -186,12 +185,7 @@ const Dashboard = () => {
         />
       </div>
 
-      {/* 3. CIRCULAR GRAPH & TILES: CUSTOMER & PAYMENT PENDING OVERVIEW (Permitted only for Users with Customer / Account access) */}
-      {(isAdmin || (hasModuleAccess && (hasModuleAccess('customers') || hasModuleAccess('accounts')))) && (
-        <CustomerPaymentPendingCard />
-      )}
-
-      {/* 3. TIMELINE STOCK INFLOW VS OUTFLOW CHART */}
+      {/* TIMELINE STOCK INFLOW VS OUTFLOW CHART */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px', marginBottom: '28px' }}>
         <StockChart />
       </div>

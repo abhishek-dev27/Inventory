@@ -1,6 +1,8 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatDate, formatDateTime } from './formatDate';
+import { SOLOGIX_LOGO_BASE64 } from '../assets/logoBase64';
+import { SOLOGIX_SIGNATURE_BASE64 } from '../assets/signatureBase64';
 
 /**
  * Export Multi-Item Dispatch Bill / Delivery Challan to PDF (No Pricing)
@@ -54,7 +56,7 @@ export const exportMultiItemBillPdf = (bill) => {
   );
   doc.text('Gate Pass: Authorized', pageWidth - 14, 24, { align: 'right' });
 
-  // 2. Customer & Consignee Details Box
+  // 2. Consignee Details Box
   let y = 36;
   doc.setFillColor(248, 250, 252);
   doc.setDrawColor(226, 232, 240);
@@ -63,14 +65,14 @@ export const exportMultiItemBillPdf = (bill) => {
   doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(108, 92, 231);
-  doc.text('CONSIGNEE / CUSTOMER DETAILS', 18, y + 6);
+  doc.text('CONSIGNEE / RECIPIENT DETAILS', 18, y + 6);
   doc.text('DISPATCH DESTINATION & PURPOSE', 115, y + 6);
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(51, 65, 85);
-  doc.text(`Customer / Client:`, 18, y + 12);
+  doc.text(`Receiver / Consignee:`, 18, y + 12);
   doc.setFont('helvetica', 'bold');
-  doc.text(`${bill.customerName || bill.personName || 'Direct Customer'}`, 52, y + 12);
+  doc.text(`${bill.personName || 'Direct Recipient'}`, 52, y + 12);
 
   doc.setFont('helvetica', 'normal');
   doc.text(`Delivery Site:`, 115, y + 12);
@@ -215,7 +217,7 @@ export const exportMultiItemBillPdf = (bill) => {
   doc.text('Verified By (Site Supervisor)', 80, sigY + 5);
 
   doc.line(145, sigY, 195, sigY);
-  doc.text('Received By (Customer Signature)', 145, sigY + 5);
+  doc.text('Received By (Authorized Signature)', 145, sigY + 5);
 
   // Footer text
   doc.setFontSize(7.5);
@@ -650,8 +652,438 @@ export const exportSingleVoucherPdf = (tx) => {
 };
 
 /**
+ * Determine HSN code from product attributes
+ */
+export const getHSNCode = (productOrItem) => {
+  if (productOrItem?.hsn) return productOrItem.hsn;
+  const combined = (
+    (productOrItem?.name || '') + ' ' +
+    (productOrItem?.productType || '') + ' ' +
+    (productOrItem?.category || '') + ' ' +
+    (productOrItem?.description || '')
+  ).toLowerCase();
+  const sku = (productOrItem?.sku || '').toUpperCase();
+
+  if (combined.includes('inverter') || sku.startsWith('OGI') || sku.startsWith('HYB') || sku.startsWith('INV')) return '85044090';
+  if (combined.includes('panel') || combined.includes('module') || sku.startsWith('PNL')) return '85414300';
+  if (combined.includes('battery') || combined.includes('storage') || sku.startsWith('BAT') || sku.startsWith('ESS') || sku.startsWith('LFP')) return '85072000';
+  if (combined.includes('acdb') || combined.includes('dcdb') || combined.includes('msb') || sku.startsWith('ACD') || sku.startsWith('DCD') || sku.startsWith('MSB')) return '85371000';
+  if (combined.includes('mcb') || combined.includes('breaker') || sku.startsWith('MCB')) return '85362030';
+  if (combined.includes('wire') || combined.includes('cable') || sku.startsWith('WIR')) return '85444999';
+  if (combined.includes('structure') || sku.startsWith('STR')) return '73089000';
+  if (combined.includes('earthing') || combined.includes('grounding') || sku.startsWith('ETH')) return '85359090';
+  if (combined.includes('nut') || combined.includes('bolt') || combined.includes('fastener')) return '73181500';
+  return '85044090';
+};
+
+/**
+ * Export Official Sologix GST Tax Invoice to PDF
+ */
+export const exportTaxInvoicePdf = (invoice) => {
+  if (!invoice || !invoice.items || invoice.items.length === 0) {
+    alert('No invoice data available to export.');
+    return;
+  }
+
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  // 1. Company Logo & Header (Left)
+  try {
+    if (SOLOGIX_LOGO_BASE64) {
+      // Cropped logo has 1.928 : 1 aspect ratio (428x222 px)
+      doc.addImage(SOLOGIX_LOGO_BASE64, 'PNG', 14, 10, 31, 16.1);
+    }
+  } catch (err) {
+    console.error('Failed to embed logo in PDF', err);
+  }
+
+  const textStartX = 47;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12.5);
+  doc.setTextColor(30, 58, 138); // Navy blue #1e3a8a
+  doc.text('Sologix Energy Pvt Ltd', textStartX, 13.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.2);
+  doc.setTextColor(51, 65, 85);
+  doc.text('Second Floor, Tower 2, STPI Ranchi, Jharkhand', textStartX, 17.5);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 41, 59);
+  doc.text('GSTIN/UIN: 20AAZCS9296C1ZT   *   State: Jharkhand, Code: 20', textStartX, 21.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text('PAN: AAZCS9296C   *   Tel: +91 82877 66474', textStartX, 25.5);
+  doc.text('Email: sales@sologix.com', textStartX, 29.5);
+
+  const driverNameVal = invoice.driverName || invoice.supply?.driverName || '';
+  const driverPhoneVal = invoice.driverPhone || invoice.supply?.driverPhone || '';
+  const vehicleNoVal = invoice.vehicleNo || invoice.supply?.vehicleNo || '';
+  const timeVal = invoice.time || invoice.supply?.dispatchTime || '';
+
+  // Top Right: DELIVERY CHALLAN Badge & Metadata Block (Without Overlap)
+  const badgeWidth = 44;
+  const badgeHeight = 7;
+  const badgeX = pageWidth - 14 - badgeWidth;
+  doc.setFillColor(30, 58, 138); // #1e3a8a
+  doc.roundedRect(badgeX, 8.5, badgeWidth, badgeHeight, 1.5, 1.5, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text('DELIVERY CHALLAN', badgeX + badgeWidth / 2, 13, { align: 'center' });
+
+  const metaLabelX = 138;
+  doc.setFontSize(7.6);
+  doc.setTextColor(71, 85, 105);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Challan No:', metaLabelX, 19.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(`${invoice.invoiceNo || 'DC-26-001'}`, pageWidth - 14, 19.5, { align: 'right' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text('Date:', metaLabelX, 24.0);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(`${invoice.date || formatDate(new Date())}`, pageWidth - 14, 24.0, { align: 'right' });
+
+  if (timeVal) {
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    doc.text('Time:', metaLabelX, 28.0);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${timeVal}`, pageWidth - 14, 28.0, { align: 'right' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    doc.text('Ref Proposal:', metaLabelX, 32.0);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${invoice.refProposal || 'RSP-26-001'}`, pageWidth - 14, 32.0, { align: 'right' });
+  } else {
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    doc.text('Ref Proposal:', metaLabelX, 28.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${invoice.refProposal || 'RSP-26-001'}`, pageWidth - 14, 28.5, { align: 'right' });
+  }
+
+  // Divider Line
+  doc.setDrawColor(30, 58, 138);
+  doc.setLineWidth(0.6);
+  doc.line(14, 35.5, pageWidth - 14, 35.5);
+
+  // 2. Billed To & Shipped To (Two Side-by-Side Cards)
+  const cardY = 38.5;
+  const cardWidth = (pageWidth - 28 - 6) / 2;
+  const cardHeight = 40;
+
+  const buyerObj = invoice.buyer || {};
+  const consigneeObj = invoice.consignee || buyerObj;
+
+  // Left Card: Billed To
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(14, cardY, cardWidth, cardHeight, 2, 2, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(30, 58, 138);
+  doc.text('BILLED TO (BUYER DETAILS)', 18, cardY + 5.5);
+
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(`${buyerObj.name || 'Authorized Buyer'}`, 18, cardY + 12.0, { maxWidth: cardWidth - 8 });
+
+  doc.setFontSize(7.8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text(`${buyerObj.place || 'Jharkhand'}`, 18, cardY + 17.5, { maxWidth: cardWidth - 8 });
+  doc.text(`State: ${buyerObj.state || 'Jharkhand'}`, 18, cardY + 23.0);
+  if (buyerObj.phone) {
+    doc.text(`Phone: ${buyerObj.phone}`, 18, cardY + 28.5);
+  }
+  if (buyerObj.gstin) {
+    doc.text(`GSTIN: ${buyerObj.gstin}`, 18, cardY + 34.0);
+  }
+
+  // Right Card: Shipped To
+  const rightCardX = 14 + cardWidth + 6;
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(rightCardX, cardY, cardWidth, cardHeight, 2, 2, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(2, 132, 199);
+  doc.text('SHIPPED TO (CONSIGNEE / DELIVERY SITE)', rightCardX + 4, cardY + 5.5);
+
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(`${consigneeObj.name || buyerObj.name || 'Site Consignee'}`, rightCardX + 4, cardY + 12.0, { maxWidth: cardWidth - 8 });
+
+  doc.setFontSize(7.8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text(`${consigneeObj.place || buyerObj.place || 'Project Site'}`, rightCardX + 4, cardY + 17.5, { maxWidth: cardWidth - 8 });
+  doc.text(`State: ${consigneeObj.state || buyerObj.state || 'Jharkhand'}`, rightCardX + 4, cardY + 23.0);
+  if (consigneeObj.phone || buyerObj.phone) {
+    doc.text(`Contact: ${consigneeObj.phone || buyerObj.phone}`, rightCardX + 4, cardY + 28.5);
+  }
+  doc.text(`Place of Supply: ${invoice.supply?.placeOfSupply || consigneeObj.state || 'Jharkhand'}`, rightCardX + 4, cardY + 34.0);
+
+  // 3. Items Table (Delivery Challan - No Pricing)
+  const totalUnits = (invoice.items || []).reduce((sum, it) => sum + (parseFloat(it.quantity) || 1), 0);
+
+  const tableRows = (invoice.items || []).map((item, idx) => {
+    let desc = item.description || item.name || 'Product Item';
+    if (item.brand) {
+      desc += `\nBrand: ${item.brand}`;
+    }
+
+    const serialsText = (item.serialNumbers && item.serialNumbers.length > 0)
+      ? item.serialNumbers.join(', ')
+      : '-';
+
+    const qtyNum = parseFloat(item.quantity) || 1;
+
+    return [
+      String(idx + 1),
+      desc,
+      item.itemCode || item.sku || '-',
+      item.hsn || getHSNCode(item),
+      serialsText,
+      `${qtyNum} ${item.unit || 'pcs'}`,
+    ];
+  });
+
+  autoTable(doc, {
+    startY: cardY + cardHeight + 4,
+    head: [['#', 'Item Description / Equipment', 'Item Code / SKU', 'HSN Code', 'Product Serial No.', 'Dispatched Qty']],
+    body: tableRows,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [30, 58, 138],
+      textColor: [255, 255, 255],
+      fontSize: 8,
+      fontStyle: 'bold',
+      halign: 'center',
+      cellPadding: 2.5,
+    },
+    bodyStyles: {
+      fontSize: 7.6,
+      textColor: [30, 41, 59],
+      cellPadding: 2.5,
+    },
+    alternateRowStyles: {
+      fillColor: [248, 250, 252],
+    },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 10 },
+      1: { halign: 'left', cellWidth: 60 },
+      2: { halign: 'center', cellWidth: 32, fontSize: 7.4, fontStyle: 'bold' },
+      3: { halign: 'center', cellWidth: 20, fontSize: 7.4 },
+      4: { halign: 'center', cellWidth: 38, fontSize: 7.2 },
+      5: { halign: 'center', cellWidth: 22, fontStyle: 'bold' },
+    },
+    margin: { left: 14, right: 14 },
+  });
+
+  let finalY = doc.lastAutoTable.finalY + 4;
+  if (finalY > pageHeight - 55) {
+    doc.addPage();
+    finalY = 16;
+  }
+
+  // 4. Bottom Cards: Dispatch Logistics Verification & Dispatch Quantity Summary
+  const bottomCardHeight = 40;
+
+  // Left Bottom: Dispatch & Logistics Verification
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(14, finalY, cardWidth, bottomCardHeight, 2, 2, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(30, 58, 138);
+  doc.text('DISPATCH & LOGISTICS VERIFICATION', 18, finalY + 5.5);
+
+  const dispValX = 41;
+  doc.setFontSize(7.2);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text('Vehicle Number:', 18, finalY + 11.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 58, 138);
+  doc.text(`${vehicleNoVal ? vehicleNoVal.toUpperCase() : 'Not Specified'}`, dispValX, finalY + 11.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text('Driver in Charge:', 18, finalY + 17.0);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  const bottomDriver = `${driverNameVal || 'Authorized Driver'}${driverPhoneVal ? ` (Ph: ${driverPhoneVal})` : ''}`.slice(0, 30);
+  doc.text(bottomDriver, dispValX, finalY + 17.0);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text('Carrier / Transport:', 18, finalY + 22.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  const carrierVal = (invoice.supply?.transport || 'Road Logistics').slice(0, 28);
+  doc.text(carrierVal, dispValX, finalY + 22.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text('Date & Time:', 18, finalY + 28.0);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  const bottomDateTime = `${invoice.date || formatDate(new Date())}${timeVal ? `  ${timeVal}` : ''}`;
+  doc.text(bottomDateTime, dispValX, finalY + 28.0);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text('Gate Security:', 18, finalY + 33.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(22, 163, 74);
+  doc.text('VERIFIED & CLEARED FOR TRANSIT', dispValX, finalY + 33.5);
+
+  // Right Bottom: Dispatch Quantity Summary (Replaces pricing box)
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(rightCardX, finalY, cardWidth, bottomCardHeight, 2, 2, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(30, 58, 138);
+  doc.text('DISPATCH QUANTITY SUMMARY', rightCardX + 6, finalY + 5.5);
+
+  doc.setFontSize(7.6);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text('Total Distinct Items:', rightCardX + 6, finalY + 12.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(`${(invoice.items || []).length} Products`, pageWidth - 18, finalY + 12.5, { align: 'right' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text('Gate Security Status:', rightCardX + 6, finalY + 18.0);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 58, 138);
+  doc.text('ISSUED & DISPATCHED', pageWidth - 18, finalY + 18.0, { align: 'right' });
+
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.4);
+  doc.line(rightCardX + 4, finalY + 23.5, pageWidth - 16, finalY + 23.5);
+
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text('TOTAL QUANTITY:', rightCardX + 6, finalY + 32.5);
+  doc.setTextColor(22, 163, 74); // Green
+  doc.setFontSize(11);
+  doc.text(`${totalUnits} Units`, pageWidth - 18, finalY + 32.5, { align: 'right' });
+
+  // 5. Official Corporate Declaration & Authorized Signatory Block
+  let authY = finalY + bottomCardHeight + 5;
+  const authHeight = 31;
+
+  if (authY + authHeight > pageHeight - 12) {
+    doc.addPage();
+    authY = 16;
+  }
+
+  // Left: Official Declaration Box
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(14, authY, cardWidth, authHeight, 2, 2, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(30, 58, 138); // Deep Navy #1e3a8a
+  doc.text('DECLARATION & TERMS OF MOVEMENT', 18, authY + 5.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.2);
+  doc.setTextColor(51, 65, 85);
+  doc.text('We declare that this Delivery Challan represents actual materials dispatched', 18, authY + 11);
+  doc.text('from warehouse and that all particulars are true and correct.', 18, authY + 15.5);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(30, 41, 59);
+  doc.text('Computer Generated Delivery Challan * Gate Pass Authorized', 18, authY + 21);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.8);
+  doc.setTextColor(100, 116, 139);
+  doc.text('Subject to Ranchi Jurisdiction. E.&O.E.', 18, authY + 26);
+
+  // Right: High-Impact Authorized Signatory Box with Official Stamp
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(rightCardX, authY, cardWidth, authHeight, 2, 2, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(30, 58, 138); // Bold Deep Navy
+  doc.text('For Sologix Energy Pvt Ltd', rightCardX + cardWidth / 2, authY + 5.5, { align: 'center' });
+
+  // Embed Official Stamp & Signature Seal
+  try {
+    if (SOLOGIX_SIGNATURE_BASE64) {
+      const stampSize = 17.5;
+      const stampX = rightCardX + (cardWidth - stampSize) / 2;
+      const stampY = authY + 6.8;
+      doc.addImage(SOLOGIX_SIGNATURE_BASE64, 'PNG', stampX, stampY, stampSize, stampSize);
+    }
+  } catch (err) {
+    console.error('Failed to embed signature stamp in PDF', err);
+  }
+
+  // Clean Signature Rule
+  doc.setDrawColor(148, 163, 184);
+  doc.setLineWidth(0.4);
+  doc.line(rightCardX + 16, authY + 24.5, rightCardX + cardWidth - 16, authY + 24.5);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.8);
+  doc.setTextColor(15, 23, 42); // Strong Bold Dark Slate
+  doc.text('AUTHORIZED SIGNATORY', rightCardX + cardWidth / 2, authY + 28.5, { align: 'center' });
+
+  // Bottom Page Reference
+  if (authY + authHeight < pageHeight - 5) {
+    doc.setFontSize(6.8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text('Official Sologix Energy System Generated Delivery Challan - Valid for Transit & Gate Security', 14, pageHeight - 4.5);
+    doc.text('Page 1 of 1', pageWidth - 14, pageHeight - 4.5, { align: 'right' });
+  }
+
+  doc.save(`Delivery_Challan_${invoice.invoiceNo || 'DC'}.pdf`);
+};
+
+/**
  * Direct Print Action (Triggers browser print sheet)
  */
 export const triggerPrint = () => {
   window.print();
 };
+

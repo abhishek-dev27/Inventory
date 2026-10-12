@@ -25,11 +25,17 @@ import Modal from '../../components/common/Modal';
 import { stockService } from '../../services/stockService';
 import { formatDateTime, formatRelative, formatDate } from '../../utils/formatDate';
 import { formatCurrency, CURRENCY_SYMBOL } from '../../utils/formatCurrency';
-import { exportStockLedgerPdf, exportSingleVoucherPdf, triggerPrint } from '../../utils/exportPdf';
-import { PRODUCT_TYPES, TYPE_ICONS } from '../../utils/constants';
+import { exportStockLedgerPdf, exportSingleVoucherPdf, triggerPrint, getHSNCode } from '../../utils/exportPdf';
+import { PRODUCT_TYPES, TYPE_ICONS, GODOWN_LOCATIONS } from '../../utils/constants';
+import { useGodowns } from '../../context/GodownContext';
+import TaxInvoiceModal from '../../components/stock/TaxInvoiceModal';
+import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 
 const StockHistory = () => {
+  const { isAdmin } = useAuth();
+  const { godownNames } = useGodowns();
+  const activeGodowns = godownNames && godownNames.length > 0 ? godownNames : GODOWN_LOCATIONS;
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -44,6 +50,7 @@ const StockHistory = () => {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, pages: 1 });
   const [selectedTx, setSelectedTx] = useState(null);
+  const [taxInvoiceTx, setTaxInvoiceTx] = useState(null);
   const [editingTx, setEditingTx] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editSubmitting, setEditSubmitting] = useState(false);
@@ -66,7 +73,7 @@ const StockHistory = () => {
     try {
       const response = await stockService.getTransactions({
         page,
-        limit: 25,
+        limit: 50,
         search: searchTerm.trim() || undefined,
         type: filters.type || undefined,
         productType: filters.productType || undefined,
@@ -109,6 +116,93 @@ const StockHistory = () => {
     setRefreshing(true);
     await fetchTransactions(true);
     toast.success('Ledger updated');
+  };
+
+  const buildInvoiceFromTx = (tx) => {
+    if (!tx) return null;
+
+    const entryItems = Array.isArray(tx.items) && tx.items.length > 0
+      ? tx.items
+      : [{ product: tx.product, quantity: tx.quantity, serialNumbers: tx.serialNumbers }];
+
+    const invoiceItems = entryItems.map((item) => {
+      const prod = item.product || {};
+      const rate = parseFloat(prod.price) || 26000;
+      const qty = parseFloat(item.quantity) || 1;
+      const gst = 5;
+      const taxable = rate * qty;
+      const gstAmt = taxable * (gst / 100);
+      const grand = taxable + gstAmt;
+
+      let serials = [];
+      if (item.serialNumbers) {
+        if (Array.isArray(item.serialNumbers)) {
+          serials = item.serialNumbers;
+        } else {
+          try {
+            const parsed = JSON.parse(item.serialNumbers);
+            if (Array.isArray(parsed)) serials = parsed;
+          } catch {
+            if (typeof item.serialNumbers === 'string') {
+              serials = item.serialNumbers.split(',').map((s) => s.trim()).filter(Boolean);
+            }
+          }
+        }
+      }
+
+      return {
+        description: prod.name || 'Solar Equipment',
+        brand: prod.brand || 'Deye',
+        itemCode: prod.sku || 'MAT-INV-001',
+        hsn: prod.hsn || getHSNCode(prod),
+        quantity: qty,
+        unit: prod.unit || 'pcs',
+        unitRate: rate,
+        gstRate: '5%',
+        total: grand,
+        serialNumbers: serials,
+      };
+    });
+
+    let totalTaxable = 0;
+    let totalGst = 0;
+    invoiceItems.forEach((it) => {
+      const lineTaxable = it.unitRate * it.quantity;
+      const lineGst = lineTaxable * 0.05;
+      totalTaxable += lineTaxable;
+      totalGst += lineGst;
+    });
+
+    return {
+      invoiceNo: tx.referenceNo || `INV-26-${String(tx.id).padStart(3, '0')}`,
+      date: formatDate(tx.transactionDate || tx.createdAt),
+      refProposal: `RSP-${(tx.referenceNo || String(tx.id)).replace(/^[A-Z]+\//, '').replace(/^[A-Z]+-/, '')}`,
+      buyer: {
+        name: tx.personName || 'Abdul Aziz',
+        place: tx.place || 'Bariyatu',
+        state: 'Jharkhand',
+        phone: tx.senderPhone || '',
+      },
+      consignee: {
+        name: tx.personName || 'Abdul Aziz',
+        place: tx.place || 'Bariyatu',
+        state: 'Jharkhand',
+        phone: tx.senderPhone || '',
+      },
+      supply: {
+        placeOfSupply: 'Jharkhand',
+        natureOfTransaction: 'B2B Solar Product Supply',
+        paymentTerms: '100% Advance Payment before dispatch',
+        transport: tx.notes?.includes('Transport:') ? tx.notes.split('Transport:')[1].trim() : 'SafeXpress / Road Transport Logistics',
+        status: 'ISSUED',
+      },
+      items: invoiceItems,
+      totals: {
+        taxableAmount: totalTaxable,
+        gstAmount: totalGst,
+        grandTotal: totalTaxable + totalGst,
+      },
+    };
   };
 
   const handleOpenEdit = (tx) => {
@@ -187,7 +281,7 @@ const StockHistory = () => {
         personName: editFormData.personName ? editFormData.personName.trim() : null,
         place: editFormData.place ? editFormData.place.trim() : null,
         referenceNo: editFormData.referenceNo ? editFormData.referenceNo.trim() : null,
-        transactionDate: editFormData.transactionDate ? new Date(editFormData.transactionDate) : undefined,
+        transactionDate: isAdmin && editFormData.transactionDate ? new Date(editFormData.transactionDate) : undefined,
         senderPhone: editFormData.senderPhone ? editFormData.senderPhone.trim() : null,
         senderAddress: editFormData.senderAddress ? editFormData.senderAddress.trim() : null,
         senderCompany: editFormData.senderCompany ? editFormData.senderCompany.trim() : null,
@@ -438,7 +532,7 @@ const StockHistory = () => {
               onChange={handleFilterChange}
             >
               <option value="">All Godowns</option>
-              {['Ranchi', 'Jamshedpur', 'Hazaribagh', 'Patna', 'Daltonganj'].map((loc) => (
+              {activeGodowns.map((loc) => (
                 <option key={loc} value={loc}>
                   🏢 {loc}
                 </option>
@@ -483,6 +577,7 @@ const StockHistory = () => {
             transactions={transactions}
             onInspect={(tx) => setSelectedTx(tx)}
             onEdit={handleOpenEdit}
+            onOpenInvoice={(tx) => setTaxInvoiceTx(tx)}
           />
 
           {/* Pagination */}
@@ -548,10 +643,16 @@ const StockHistory = () => {
                 )}
                 <div>
                   <div style={{ fontWeight: 800, fontSize: '1.05rem', color: isIn ? 'var(--success)' : 'var(--danger)' }}>
-                    {isIn ? `Restocked +${selectedTx.quantity} ${unit}` : `Dispatched / Consumed -${selectedTx.quantity} ${unit}`}
+                    {selectedTx.items && selectedTx.items.length > 1
+                      ? isIn
+                        ? `Restocked +${selectedTx.totalQuantity} Units (${selectedTx.items.length} Products)`
+                        : `Dispatched / Consumed -${selectedTx.totalQuantity} Units (${selectedTx.items.length} Products)`
+                      : isIn
+                      ? `Restocked +${selectedTx.quantity || selectedTx.items?.[0]?.quantity} ${unit}`
+                      : `Dispatched / Consumed -${selectedTx.quantity || selectedTx.items?.[0]?.quantity} ${unit}`}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                    Reason: {selectedTx.reason}
+                    Reason: {selectedTx.reason} • Ref: {selectedTx.referenceNo || '—'}
                   </div>
                 </div>
               </div>
@@ -560,104 +661,211 @@ const StockHistory = () => {
                   Movement Quantity
                 </span>
                 <div style={{ fontWeight: 800, fontSize: '1.1rem', color: isIn ? 'var(--success)' : 'var(--danger)' }}>
-                  {isIn ? `+${selectedTx.quantity}` : `-${selectedTx.quantity}`} {unit}
+                  {isIn
+                    ? `+${selectedTx.totalQuantity || selectedTx.quantity}`
+                    : `-${selectedTx.totalQuantity || selectedTx.quantity}`}{' '}
+                  {selectedTx.items && selectedTx.items.length > 1 ? 'Units' : unit}
                 </div>
               </div>
             </div>
 
-            {/* SECTION 1: FULL PRODUCT DETAILS */}
-            <div
-              style={{
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-md)',
-                padding: '14px 16px',
-                background: 'var(--bg-secondary)',
-              }}
-            >
+            {/* SECTION 1: PRODUCT DETAILS (SINGLE OR MULTI-PRODUCT MANIFEST) */}
+            {selectedTx.items && selectedTx.items.length > 1 ? (
               <div
                 style={{
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  color: 'var(--primary-light)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  marginBottom: '10px',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '14px 16px',
+                  background: 'var(--bg-secondary)',
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
+                  flexDirection: 'column',
+                  gap: '12px',
                 }}
               >
-                <FiBox size={14} />
-                Full Product Specifications
+                <div
+                  style={{
+                    fontSize: '0.78rem',
+                    fontWeight: 800,
+                    color: 'var(--primary-light)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <FiBox size={14} />
+                  <span>Equipment Manifest ({selectedTx.items.length} Products on this Entry)</span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {selectedTx.items.map((it, idx) => {
+                    const prod = it.product || {};
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          backgroundColor: '#ffffff',
+                          border: '1px solid var(--border)',
+                          borderRadius: '8px',
+                          padding: '10px 14px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                              {idx + 1}. {prod.name || 'Equipment'}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>
+                              {prod.sku && (
+                                <span style={{ fontFamily: 'monospace', fontSize: '0.72rem', backgroundColor: '#f1f5f9', padding: '1px 6px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
+                                  {prod.sku}
+                                </span>
+                              )}
+                              {prod.brand && (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                  Brand: <strong>{prod.brand}</strong>
+                                </span>
+                              )}
+                              {prod.capacity && (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                  Rating: <strong>{prod.capacity}</strong>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontWeight: 800, fontSize: '0.95rem', color: isIn ? 'var(--success)' : 'var(--danger)' }}>
+                              {isIn ? `+${it.quantity}` : `-${it.quantity}`} {prod.unit || 'pcs'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {it.serialNumbers && it.serialNumbers.length > 0 && (
+                          <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed var(--border)' }}>
+                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#1e3a8a', textTransform: 'uppercase' }}>
+                              Serial Numbers:
+                            </span>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '3px' }}>
+                              {it.serialNumbers.map((sn, sIdx) => (
+                                <span
+                                  key={sIdx}
+                                  style={{
+                                    fontFamily: 'monospace',
+                                    fontSize: '0.72rem',
+                                    backgroundColor: '#f8fafc',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #cbd5e1',
+                                    color: '#0f172a',
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  ⚡ {sn}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-
-              <div className="grid-2" style={{ gap: '10px' }}>
-                <div>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-                    Product Name
-                  </span>
-                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
-                    {selectedTx.product?.name || 'Deleted Product'}
-                  </div>
+            ) : (
+              <div
+                style={{
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '14px 16px',
+                  background: 'var(--bg-secondary)',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    color: 'var(--primary-light)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    marginBottom: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <FiBox size={14} />
+                  Full Product Specifications
                 </div>
 
-                <div>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-                    Unique ID / SKU
-                  </span>
-                  <div style={{ fontWeight: 700, fontFamily: 'monospace', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
-                    {selectedTx.product?.sku || '—'}
-                  </div>
-                </div>
-
-                <div>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-                    Product Type
-                  </span>
-                  <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
-                    {selectedTx.product?.productType || 'Standard Product'}
-                  </div>
-                </div>
-
-                <div>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-                    Company / Brand
-                  </span>
-                  <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
-                    {selectedTx.product?.brand || selectedTx.product?.category || '—'}
-                  </div>
-                </div>
-
-                {selectedTx.product?.capacity && (
+                <div className="grid-2" style={{ gap: '10px' }}>
                   <div>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-                      Capacity & Phase
+                      Product Name
                     </span>
-                    <div style={{ fontWeight: 700, color: 'var(--primary-light)', fontSize: '0.85rem' }}>
-                      ⚡ {selectedTx.product.capacity} • {selectedTx.product.phase || '1-Phase'}
+                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+                      {selectedTx.product?.name || selectedTx.items?.[0]?.product?.name || 'Deleted Product'}
                     </div>
                   </div>
-                )}
 
-                <div>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-                    Current Available Stock
-                  </span>
-                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
-                    {selectedTx.product?.quantity ?? 0} {unit}
+                  <div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      Unique ID / SKU
+                    </span>
+                    <div style={{ fontWeight: 700, fontFamily: 'monospace', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+                      {selectedTx.product?.sku || selectedTx.items?.[0]?.product?.sku || '—'}
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-                    Storage Bin Location
-                  </span>
-                  <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
-                    📍 {selectedTx.product?.location || 'Warehouse Storage'}
+                  <div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      Product Type
+                    </span>
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                      {selectedTx.product?.productType || selectedTx.items?.[0]?.product?.productType || 'Standard Product'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      Company / Brand
+                    </span>
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                      {selectedTx.product?.brand || selectedTx.items?.[0]?.product?.brand || '—'}
+                    </div>
+                  </div>
+
+                  {(selectedTx.product?.capacity || selectedTx.items?.[0]?.product?.capacity) && (
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                        Capacity & Phase
+                      </span>
+                      <div style={{ fontWeight: 700, color: 'var(--primary-light)', fontSize: '0.85rem' }}>
+                        ⚡ {selectedTx.product?.capacity || selectedTx.items?.[0]?.product?.capacity} • {selectedTx.product?.phase || selectedTx.items?.[0]?.product?.phase || '1-Phase'}
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      Current Available Stock
+                    </span>
+                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                      {selectedTx.product?.quantity ?? selectedTx.items?.[0]?.product?.quantity ?? 0} {unit}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      Storage Bin Location
+                    </span>
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                      📍 {selectedTx.product?.location || selectedTx.items?.[0]?.product?.location || 'Warehouse Storage'}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* SECTION 2: DISPATCH & RECEIVER PARTICULAR DETAILS */}
             <div
@@ -755,8 +963,9 @@ const StockHistory = () => {
                 </div>
               </div>
 
-              {/* ATTACHED SERIAL NUMBERS IN VOUCHER */}
-              {selectedTx.serialNumbers &&
+              {/* ATTACHED SERIAL NUMBERS IN VOUCHER (FOR SINGLE ITEM) */}
+              {(!selectedTx.items || selectedTx.items.length <= 1) &&
+                selectedTx.serialNumbers &&
                 (Array.isArray(selectedTx.serialNumbers) ? selectedTx.serialNumbers : JSON.parse(selectedTx.serialNumbers || '[]')).length > 0 && (
                   <div style={{ marginTop: '12px', background: 'var(--bg-secondary)', padding: '10px 12px', borderRadius: 'var(--radius-md)' }}>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
@@ -797,9 +1006,28 @@ const StockHistory = () => {
             </div>
 
             <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                {!isIn && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={FiFileText}
+                    style={{
+                      backgroundColor: '#1e3a8a',
+                      borderColor: '#1e3a8a',
+                      color: '#ffffff',
+                      fontWeight: 700,
+                    }}
+                    onClick={() => {
+                      const t = selectedTx;
+                      setTaxInvoiceTx(t);
+                    }}
+                  >
+                    Official Delivery Challan
+                  </Button>
+                )}
                 <Button
-                  variant="primary"
+                  variant="secondary"
                   size="sm"
                   icon={FiFileText}
                   onClick={() => exportSingleVoucherPdf(selectedTx)}
@@ -889,11 +1117,18 @@ const StockHistory = () => {
               />
 
               <Input
-                label="Date & Time"
+                label={isAdmin ? "Date & Time (Admin Editable)" : "Date & Time (Auto-Captured)"}
                 name="transactionDate"
                 type="datetime-local"
                 value={editFormData.transactionDate}
-                onChange={handleEditChange}
+                onChange={isAdmin ? handleEditChange : undefined}
+                disabled={!isAdmin}
+                readOnly={!isAdmin}
+                helperText={
+                  isAdmin
+                    ? "🕒 Admin can edit the transaction date & time"
+                    : "🔒 Auto-captured timestamp (editable by Admin only)"
+                }
               />
             </div>
 
@@ -995,6 +1230,15 @@ const StockHistory = () => {
           </form>
         )}
       </Modal>
+
+      {/* Official Sologix GST Tax Invoice Modal */}
+      {taxInvoiceTx && (
+        <TaxInvoiceModal
+          isOpen={Boolean(taxInvoiceTx)}
+          onClose={() => setTaxInvoiceTx(null)}
+          invoiceData={buildInvoiceFromTx(taxInvoiceTx)}
+        />
+      )}
     </div>
   );
 };

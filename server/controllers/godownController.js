@@ -1,5 +1,6 @@
 const Godown = require('../models/Godown');
 const Product = require('../models/Product');
+const User = require('../models/User');
 const { Op } = require('sequelize');
 const { recordActivity } = require('../utils/clientInfo');
 
@@ -156,29 +157,63 @@ const updateGodown = async (req, res, next) => {
 };
 
 // @desc    Delete a godown
+// @desc    Delete a godown (Admin only)
 // @route   DELETE /api/godowns/:id
 // @access  Private (Admin)
 const deleteGodown = async (req, res, next) => {
   try {
-    const godown = await Godown.findByPk(req.params.id);
+    const identifier = req.params.id;
+    let godown = null;
+
+    if (!isNaN(identifier)) {
+      godown = await Godown.findByPk(identifier);
+    }
+    if (!godown) {
+      godown = await Godown.findOne({
+        where: {
+          [Op.or]: [
+            { name: identifier },
+            { id: isNaN(identifier) ? -1 : identifier },
+          ],
+        },
+      });
+    }
+
     if (!godown) {
       res.status(404);
       throw new Error('Godown not found');
     }
 
-    // Check if products exist in this godown
-    const productCount = await Product.count({
-      where: {
-        location: { [Op.like]: `%${godown.name}%` },
-      },
-    });
+    const deletedName = godown.name;
 
-    if (productCount > 0) {
-      res.status(400);
-      throw new Error(`Cannot delete "${godown.name}" because it currently has ${productCount} products assigned to it. Please reassign or clear products first.`);
+    // Safely unassign products currently referencing this godown so any godown can be deleted
+    try {
+      await Product.update(
+        { location: 'Unassigned' },
+        {
+          where: {
+            location: { [Op.like]: `%${deletedName}%` },
+          },
+        }
+      );
+    } catch (err) {
+      console.warn('Could not update product locations on godown deletion:', err.message);
     }
 
-    const deletedName = godown.name;
+    // Safely reassign any users designated to this godown to 'All Locations'
+    try {
+      await User.update(
+        { assignedLocation: 'All Locations' },
+        {
+          where: {
+            assignedLocation: deletedName,
+          },
+        }
+      );
+    } catch (err) {
+      console.warn('Could not update user assigned locations on godown deletion:', err.message);
+    }
+
     await godown.destroy();
 
     await recordActivity(req, {
