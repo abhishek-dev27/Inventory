@@ -25,7 +25,7 @@ import Modal from '../../components/common/Modal';
 import { stockService } from '../../services/stockService';
 import { formatDateTime, formatRelative, formatDate } from '../../utils/formatDate';
 import { formatCurrency, CURRENCY_SYMBOL } from '../../utils/formatCurrency';
-import { exportStockLedgerPdf, exportSingleVoucherPdf, triggerPrint, getHSNCode } from '../../utils/exportPdf';
+import { exportStockLedgerPdf, triggerPrint, getHSNCode } from '../../utils/exportPdf';
 import { PRODUCT_TYPES, TYPE_ICONS, GODOWN_LOCATIONS } from '../../utils/constants';
 import { useGodowns } from '../../context/GodownContext';
 import TaxInvoiceModal from '../../components/stock/TaxInvoiceModal';
@@ -1025,22 +1025,6 @@ const StockHistory = () => {
                     Official Delivery Challan
                   </Button>
                 )}
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon={FiFileText}
-                  onClick={() => exportSingleVoucherPdf(selectedTx)}
-                >
-                  Download PDF Voucher
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon={FiPrinter}
-                  onClick={triggerPrint}
-                >
-                  Print Voucher
-                </Button>
                 <Button
                   variant="secondary"
                   size="sm"
