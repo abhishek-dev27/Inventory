@@ -16,7 +16,6 @@ const TaxInvoiceModal = ({ isOpen, onClose, invoiceData, onNewDispatch, onGoHist
     driverName = '',
     driverPhone = '',
     vehicleNo = '',
-    refProposal = 'RSP-26-001',
     buyer = {},
     consignee = {},
     supply = {},
@@ -223,15 +222,11 @@ const TaxInvoiceModal = ({ isOpen, onClose, invoiceData, onNewDispatch, onGoHist
               </div>
             )}
             {vehicleNoVal && (
-              <div style={{ fontSize: '0.85rem', marginBottom: '3px' }}>
+              <div style={{ fontSize: '0.85rem' }}>
                 <span style={{ color: '#64748b', marginRight: '6px' }}>Vehicle No:</span>
                 <strong style={{ color: '#1e3a8a', fontFamily: 'monospace' }}>{vehicleNoVal}</strong>
               </div>
             )}
-            <div style={{ fontSize: '0.85rem' }}>
-              <span style={{ color: '#64748b', marginRight: '6px' }}>Ref Proposal:</span>
-              <strong style={{ color: '#0f172a', fontFamily: 'monospace' }}>{refProposal}</strong>
-            </div>
           </div>
         </div>
 

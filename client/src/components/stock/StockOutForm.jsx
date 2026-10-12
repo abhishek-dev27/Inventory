@@ -368,7 +368,6 @@ const StockOutForm = ({
     vehicleNo: '',
     dispatchDate: defaultDateStr,
     dispatchTime: defaultTimeStr,
-    refProposal: '',
     reason: initialReason,
     customReason: '',
     referenceNo: generateBillNumberForFY(initialFY, [], initialPrefix),
@@ -786,7 +785,6 @@ const StockOutForm = ({
     });
 
     const shortFY = (selectedFY.split('-')[0] || '').slice(-2);
-    const defaultRefProp = `RSP-${shortFY}-001`;
 
     // Format dispatch time to 12-hour format e.g. "06:40 PM" if needed
     let formattedTime = billHeader.dispatchTime || '';
@@ -831,7 +829,6 @@ const StockOutForm = ({
       driverName: billHeader.driverName?.trim() || '',
       driverPhone: billHeader.driverPhone?.trim() || '',
       vehicleNo: billHeader.vehicleNo?.trim() || '',
-      refProposal: billHeader.refProposal || defaultRefProp,
       buyer: activeBuyer,
       consignee: activeConsignee,
       supply: {
@@ -921,7 +918,6 @@ const StockOutForm = ({
       vehicleNo: billHeader.vehicleNo?.trim() || '',
       dispatchDate: finalDispatchDate,
       dispatchTime: finalDispatchTime,
-      refProposal: billHeader.refProposal?.trim() || '',
       items: billItems.map((item) => {
         const prod = products.find((p) => p.id === parseInt(item.productId, 10));
         return {

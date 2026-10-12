@@ -49,7 +49,6 @@ const StockOut = () => {
         driverName: formData.driverName || '',
         driverPhone: formData.driverPhone || '',
         vehicleNo: formData.vehicleNo || '',
-        refProposal: formData.refProposal || `RSP-${(formData.referenceNo || '26-001').replace(/^[A-Z]+\//, '').replace(/^[A-Z]+-/, '')}`,
         buyer: {
           name: formData.personName,
           place: formData.place,

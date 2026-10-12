@@ -755,7 +755,6 @@ export const exportTaxInvoicePdf = (invoice) => {
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 23, 42);
   doc.text(`${invoice.date || formatDate(new Date())}`, pageWidth - 14, 24.0, { align: 'right' });
-
   if (timeVal) {
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(71, 85, 105);
@@ -763,20 +762,6 @@ export const exportTaxInvoicePdf = (invoice) => {
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(15, 23, 42);
     doc.text(`${timeVal}`, pageWidth - 14, 28.0, { align: 'right' });
-
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(71, 85, 105);
-    doc.text('Ref Proposal:', metaLabelX, 32.0);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    doc.text(`${invoice.refProposal || 'RSP-26-001'}`, pageWidth - 14, 32.0, { align: 'right' });
-  } else {
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(71, 85, 105);
-    doc.text('Ref Proposal:', metaLabelX, 28.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    doc.text(`${invoice.refProposal || 'RSP-26-001'}`, pageWidth - 14, 28.5, { align: 'right' });
   }
 
   // Divider Line

@@ -176,7 +176,6 @@ const StockHistory = () => {
     return {
       invoiceNo: tx.referenceNo || `INV-26-${String(tx.id).padStart(3, '0')}`,
       date: formatDate(tx.transactionDate || tx.createdAt),
-      refProposal: `RSP-${(tx.referenceNo || String(tx.id)).replace(/^[A-Z]+\//, '').replace(/^[A-Z]+-/, '')}`,
       buyer: {
         name: tx.personName || '—',
         place: tx.place || '—',
