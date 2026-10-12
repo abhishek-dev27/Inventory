@@ -178,14 +178,14 @@ const StockHistory = () => {
       date: formatDate(tx.transactionDate || tx.createdAt),
       refProposal: `RSP-${(tx.referenceNo || String(tx.id)).replace(/^[A-Z]+\//, '').replace(/^[A-Z]+-/, '')}`,
       buyer: {
-        name: tx.personName || 'Abdul Aziz',
-        place: tx.place || 'Bariyatu',
+        name: tx.personName || '—',
+        place: tx.place || '—',
         state: 'Jharkhand',
         phone: tx.senderPhone || '',
       },
       consignee: {
-        name: tx.personName || 'Abdul Aziz',
-        place: tx.place || 'Bariyatu',
+        name: tx.personName || '—',
+        place: tx.place || '—',
         state: 'Jharkhand',
         phone: tx.senderPhone || '',
       },

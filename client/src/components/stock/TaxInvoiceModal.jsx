@@ -36,18 +36,18 @@ const TaxInvoiceModal = ({ isOpen, onClose, invoiceData, onNewDispatch, onGoHist
   const timeVal = time || supply.dispatchTime || supply.time || '';
 
   const activeBuyer = {
-    name: buyer?.name || 'Abdul Aziz',
-    place: buyer?.place || 'Bariyatu, Ranchi',
-    state: buyer?.state || 'Jharkhand',
-    phone: buyer?.phone || '',
-    gstin: buyer?.gstin || '',
+    name: buyer?.name?.trim() || '—',
+    place: buyer?.place?.trim() || '—',
+    state: buyer?.state?.trim() || 'Jharkhand',
+    phone: buyer?.phone?.trim() || '',
+    gstin: buyer?.gstin?.trim() || '',
   };
 
   const activeConsignee = {
-    name: consignee?.name || buyer?.name || 'Abdul Aziz',
-    place: consignee?.place || buyer?.place || 'Bariyatu, Ranchi',
-    state: consignee?.state || buyer?.state || 'Jharkhand',
-    phone: consignee?.phone || buyer?.phone || '',
+    name: consignee?.name?.trim() || buyer?.name?.trim() || '—',
+    place: consignee?.place?.trim() || buyer?.place?.trim() || '—',
+    state: consignee?.state?.trim() || buyer?.state?.trim() || 'Jharkhand',
+    phone: consignee?.phone?.trim() || buyer?.phone?.trim() || '',
   };
 
   const handleDownload = () => {

@@ -803,8 +803,8 @@ const StockOutForm = ({
       : formatDate(billHeader.transactionDate || new Date());
 
     const activeBuyer = {
-      name: billHeader.personName?.trim() || 'Abdul Aziz',
-      place: billHeader.place?.trim() || 'Bariyatu',
+      name: billHeader.personName?.trim() || '—',
+      place: billHeader.place?.trim() || '—',
       state: billHeader.state?.trim() || 'Jharkhand',
       phone: billHeader.receiverPhone?.trim() || '',
       gstin: billHeader.buyerGstin?.trim() || '',
