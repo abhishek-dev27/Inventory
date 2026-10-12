@@ -649,7 +649,7 @@ const TransactionTable = ({
                     {/* 9. Action Buttons */}
                     <td className="no-print" style={{ textAlign: 'right', paddingRight: '20px' }}>
                       <div style={{ display: 'inline-flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                        {onOpenInvoice && (
+                        {onOpenInvoice && !isIn && (
                           <Button
                             size="sm"
                             variant="secondary"

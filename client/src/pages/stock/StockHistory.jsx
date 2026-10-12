@@ -576,7 +576,7 @@ const StockHistory = () => {
             transactions={transactions}
             onInspect={(tx) => setSelectedTx(tx)}
             onEdit={handleOpenEdit}
-            onOpenInvoice={(tx) => setTaxInvoiceTx(tx)}
+            onOpenInvoice={(tx) => tx?.type !== 'in' && setTaxInvoiceTx(tx)}
           />
 
           {/* Pagination */}
