@@ -31,10 +31,10 @@ if [ -f "${HOME}/Inventory/server/.env" ]; then
 fi
 
 if [ -n "${DB_PASS}" ] && [ -n "${DB_USER}" ] && [ "${DB_USER}" != "root" ]; then
-    mysqldump -u "${DB_USER}" -p"${DB_PASS}" "${DB_NAME}" | gzip > "${BACKUP_PATH}"
+    mysqldump --no-tablespaces -u "${DB_USER}" -p"${DB_PASS}" "${DB_NAME}" | gzip > "${BACKUP_PATH}"
 else
     # Use sudo mysqldump for socket-authenticated root
-    sudo mysqldump "${DB_NAME}" | gzip > "${BACKUP_PATH}"
+    sudo mysqldump --no-tablespaces "${DB_NAME}" | gzip > "${BACKUP_PATH}"
 fi
 
 FILESIZE=$(du -h "${BACKUP_PATH}" | cut -f1)
