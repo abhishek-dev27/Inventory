@@ -1,6 +1,8 @@
-# 📦 Inventory Management System (InventoryPro)
+# ☀️ Sologix Energy - Inventory & Commercials Management ERP
 
-A modern full-stack web application for warehouse stock tracking, product management, transactional audit logging, and analytics.
+Enterprise-grade inventory management system designed for solar EPC operations, industrial distribution, and multi-branch warehousing.
+
+> 📖 **Full Technical Architecture & Operational Manual**: Please see [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) for the complete directory structure, workflow diagrams, and operational guides.
 
 ---
 
@@ -8,19 +10,21 @@ A modern full-stack web application for warehouse stock tracking, product manage
 
 ### **Frontend**
 - **React 18** (Vite)
-- **React Router v6**
-- **Recharts** (Area & Bar Charts)
+- **React Router v7**
+- **Recharts** (Real-time analytics and flow dynamics)
 - **Axios** (JWT interceptor with automatic token refresh)
-- **React Hot Toast**
-- **React Icons**
-- **Custom Dark Glassmorphic Design System**
+- **jsPDF & jsPDF-AutoTable** (Client-side GST Delivery Challans & Gate Passes)
+- **html5-qrcode** (Webcam / Barcode scanner integration)
+- **Custom Dark / Light Glassmorphic Design System**
 
 ### **Backend**
 - **Node.js & Express**
-- **MySQL & Sequelize ORM**
+- **MySQL 8.0 & Sequelize ORM**
+- **PM2 Cluster Load Balancer** (Multi-core process management)
 - **JWT Authentication** (Short-lived access token + long-lived refresh token)
-- **Bcrypt.js** (Password hashing)
+- **Bcrypt.js** (Password hashing with audit history)
 - **Helmet, CORS, Morgan** (Security & Logging)
+- **Rclone + Bash + Linux Cron** (Automated midnight Google Drive backup engine)
 
 ---
 
